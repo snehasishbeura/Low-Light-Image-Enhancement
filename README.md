@@ -97,12 +97,28 @@ python main.py
 
 Stage images are written to `output/`.
 
+## LOL-v2 Synthetic
+
+The Synthetic split from [LOLv1 & LOLv2 on Kaggle](https://www.kaggle.com/datasets/ohmahler91/lolv1-and-lolv2) is included in the project:
+
+```text
+datasets/LOLv2/Synthetic/
+├── Train/          900 pairs
+│   ├── Low/
+│   └── Normal/
+└── Test/           100 pairs
+    ├── Low/
+    └── Normal/
+```
+
+`Low` is the dark input. `Normal` is the ground truth. Both folders use the same filename, for example `r00816405t.png`. `python evaluate_lol.py --dataset lolv2syn` scores the Test split. Train is there for inspection; the enhancer does not train on it and never reads `Normal` while enhancing.
+
 ## Scoring against ground truth
 
-Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light). Point `config.py` at the folders if auto-detect does not find them. The file already checks, in order:
+LOL eval15 and LOL-v2 Real are not bundled. Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light) if you want those scores. `config.py` checks, in order:
 
+- `datasets/LOLv2/Synthetic/Test/{Low,Normal}` for the synthetic test
 - `data/hf/LOLdataset/eval15/{low,high}` and `data/hf/lol-v2-real/Test/{Low,Normal}`
-- `data/hf/lol-v2-synthetic/Test/{Low,Normal}`
 - `data/LOLdataset/...`, `data/lol-v2-real/...`, and `data/lol-v2-synthetic/...`
 - the original Windows paths
 
@@ -122,6 +138,7 @@ python generate_final_report.py
 
 ```text
 config.py                 parameters and dataset paths
+datasets/LOLv2/Synthetic  Kaggle LOL-v2 Synthetic pairs
 main.py                   enhance images in input/
 evaluate_lol.py           PSNR, SSIM, ablation on LOL or LOL-v2
 make_comparisons.py       LOL side-by-side figures

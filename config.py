@@ -36,14 +36,17 @@ LOLV2_REAL_HIGH = _first_existing(
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Real_captured\Test\Normal",
 )
 
-# LOL-v2 Synthetic test set. The low and normal folders share filenames
-# (for example r00816405t.png in both).
+# LOL-v2 Synthetic, from the Kaggle set ohmahler91/lolv1-and-lolv2.
+# The bundled tree is datasets/LOLv2/Synthetic/{Train,Test}/{Low,Normal}.
+# Scoring uses Test. Low and Normal share filenames (r00816405t.png).
 LOLV2_SYN_LOW = _first_existing(
+    os.path.join(ROOT, "datasets", "LOLv2", "Synthetic", "Test", "Low"),
     os.path.join(ROOT, "data", "hf", "lol-v2-synthetic", "Test", "Low"),
     os.path.join(ROOT, "data", "lol-v2-synthetic", "Test", "Low"),
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Synthetic\Test\Low",
 )
 LOLV2_SYN_HIGH = _first_existing(
+    os.path.join(ROOT, "datasets", "LOLv2", "Synthetic", "Test", "Normal"),
     os.path.join(ROOT, "data", "hf", "lol-v2-synthetic", "Test", "Normal"),
     os.path.join(ROOT, "data", "lol-v2-synthetic", "Test", "Normal"),
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Synthetic\Test\Normal",
