@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------
+# Extra dataset downloads
+# LOL-v2 Synthetic ships in datasets/LOLv2/Synthetic.
+# LOL eval15 and LOL-v2 Real are still downloaded separately.
+# ---------------------------------------------------------------
+LOLdataset/
+LOLdataset.zip
+data/
+uploads/
+agent-tools/
+
+# ---------------------------------------------------------------
+# Python cache
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+
+# ---------------------------------------------------------------
+# Virtual environments
+# ---------------------------------------------------------------
+venv/
+env/
+.env
+.venv/
+
+# ---------------------------------------------------------------
+# IDE and editor files
+# ---------------------------------------------------------------
+.vscode/
+.idea/
+*.suo
+*.user
+desktop.ini
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------
+# Build and distribution artifacts
+# ---------------------------------------------------------------
+build/
+dist/
+*.egg-info/
+
+# GitHub rejects files over 100 MB.
+Low-Light-Image-Enhancement-updated.zip
