@@ -13,7 +13,6 @@ Processes the first LOL test image through the existing pipeline and saves:
 The comparison shows:
     Low-light input | Enhanced output | Ground-truth
 
-Does NOT modify any existing module or algorithm.
 """
 
 import os
@@ -23,13 +22,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import config
-from modules.image_io      import load_image
-from modules.preprocessing import preprocess
-from modules.gamma         import gamma_correction
-from modules.clahe         import apply_clahe
-from modules.bilateral     import bilateral_filter
-from modules.color_restore import restore_color
-from modules.evaluation    import evaluate
+from modules.image_io   import load_image
+from modules.pipeline   import enhance
+from modules.evaluation import evaluate
 
 ENHANCED_DIR    = os.path.join("results", "LOL", "enhanced")
 COMPARISON_DIR  = os.path.join("results", "LOL", "comparisons")
@@ -49,12 +44,7 @@ def find_groundtruth(filename, gt_dir):
 
 
 def run_pipeline(image):
-    image = preprocess(image)
-    image = gamma_correction(image, config.GAMMA)
-    image = apply_clahe(image)
-    image = bilateral_filter(image)
-    image = restore_color(image)
-    return image
+    return enhance(image)
 
 
 def bgr_to_rgb(img):

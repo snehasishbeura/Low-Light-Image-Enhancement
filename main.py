@@ -1,125 +1,80 @@
+"""
+Enhance every image in the input folder and save each pipeline stage.
+
+    python main.py
+
+Ground truth is not required and is not read. For PSNR/SSIM on LOL or
+LOL-v2, run evaluate_lol.py after the dataset paths in config.py are set.
+"""
+
 import os
+import sys
+
 import cv2
+
 import config
+from modules.image_io import load_image
+from modules.pipeline import STAGE_NAMES, run_stages
 
-from modules.image_io      import load_image
-from modules.preprocessing import preprocess
-from modules.gamma         import gamma_correction
-from modules.clahe         import apply_clahe
-from modules.bilateral     import bilateral_filter
-from modules.color_restore import restore_color
-from modules.evaluation    import evaluate, export_ablation_study
-from utils.save_images     import save
-
-SUPPORTED_EXT = {".png", ".jpg", ".jpeg"}
-
-STAGES = [
-    "Raw Low-Light",
-    "After Gamma",
-    "After CLAHE",
-    "After Bilateral",
-    "After Color Restore",
+SUPPORTED_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+INPUT_DIR = os.path.join(config.ROOT, "input")
+STAGE_FILES = [
+    "0_input.jpg",
+    "1_illumination.jpg",
+    "2_adaptive_tone.jpg",
+    "3_detail_refine.jpg",
+    "4_final.jpg",
 ]
 
-# accumulate per-stage scores across all images
-stage_psnr = {s: [] for s in STAGES}
-stage_ssim = {s: [] for s in STAGES}
 
-low_files = sorted([
-    f for f in os.listdir(config.DATASET_LOW)
-    if os.path.splitext(f)[1].lower() in SUPPORTED_EXT
-])
+def list_inputs(folder):
+    if not os.path.isdir(folder):
+        return []
+    names = []
+    for name in sorted(os.listdir(folder)):
+        ext = os.path.splitext(name)[1].lower()
+        if ext in SUPPORTED_EXT:
+            names.append(name)
+    return names
 
-if not low_files:
-    print(f"No images found in: {config.DATASET_LOW}")
-    exit()
 
-col = 22
-print(f"\n{'Ablation Analysis — LOL eval15':^{5 + col + (10+9)*5}}")
-print("=" * (5 + col + (10 + 9) * 5))
-header = f"{'Image':<{col}}" + "".join(
-    f"{'PSNR':>10}{'SSIM':>9}" for _ in STAGES
-)
-stage_header = f"{'':<{col}}" + "".join(
-    f"{s:>19}" for s in STAGES
-)
-print(stage_header)
-print(header)
-print("-" * (col + (10 + 9) * 5))
+def enhance_file(path, output_dir):
+    image = load_image(path)
+    stages = run_stages(image)
+    stem = os.path.splitext(os.path.basename(path))[0]
+    os.makedirs(output_dir, exist_ok=True)
+    written = []
+    for stage_name, filename, stage in zip(STAGE_NAMES, STAGE_FILES, stages):
+        # One image keeps the historical flat names. A folder of images is
+        # written as <stem>_<stage> so results do not overwrite each other.
+        if len(list_inputs(INPUT_DIR)) == 1:
+            out_name = filename
+        else:
+            out_name = f"{stem}_{filename}"
+        out_path = os.path.join(output_dir, out_name)
+        cv2.imwrite(out_path, stage)
+        written.append((stage_name, out_path))
+    return written
 
-for filename in low_files:
-    low_path  = os.path.join(config.DATASET_LOW,  filename)
-    high_path = os.path.join(config.DATASET_HIGH, filename)
 
-    if not os.path.isfile(high_path):
-        print(f"[ERROR] Ground-truth not found for {filename} — skipping.")
-        continue
+def main():
+    folder = sys.argv[1] if len(sys.argv) > 1 else INPUT_DIR
+    names = list_inputs(folder)
+    if not names:
+        print(f"No images found in {folder}")
+        print("Put a low-light photo in the input folder and run: python main.py")
+        return 1
 
-    try:
-        low_image = load_image(low_path)
-        gt_image  = load_image(high_path)
-    except Exception as e:
-        print(f"[ERROR] Could not load {filename}: {e} — skipping.")
-        continue
+    output_dir = os.path.join(config.ROOT, config.OUTPUT_FOLDER)
+    print(f"Enhancing {len(names)} image(s) from {folder}")
+    for name in names:
+        written = enhance_file(os.path.join(folder, name), output_dir)
+        print(f"\n{name}")
+        for stage_name, path in written:
+            print(f"  {stage_name:<24} {path}")
+    print("\nFinal image is 4_final.jpg")
+    return 0
 
-    # ------------------------------------------------------------------ #
-    # Run pipeline stage by stage
-    # ------------------------------------------------------------------ #
-    s0 = preprocess(low_image)                  # Raw low-light (baseline)
-    s1 = gamma_correction(s0, config.GAMMA)     # + Gamma Correction
-    s2 = apply_clahe(s1)                        # + CLAHE
-    s3 = bilateral_filter(s2)                   # + Bilateral Filter
-    s4 = restore_color(s3)                      # + Color Restoration (final)
 
-    # save final enhanced image
-    name = os.path.splitext(filename)[0]
-    save(s4, f"{name}_enhanced.jpg")
-
-    # ------------------------------------------------------------------ #
-    # Evaluate each stage against ground-truth
-    # ------------------------------------------------------------------ #
-    results = {}
-    for stage, img in zip(STAGES, [s0, s1, s2, s3, s4]):
-        gt = gt_image
-        if img.shape != gt.shape:
-            gt = cv2.resize(gt, (img.shape[1], img.shape[0]),
-                            interpolation=cv2.INTER_AREA)
-        psnr, ssim = evaluate(gt, img)
-        results[stage] = (psnr, ssim)
-        stage_psnr[stage].append(psnr)
-        stage_ssim[stage].append(ssim)
-
-    row = f"{filename:<{col}}"
-    for s in STAGES:
-        p, si = results[s]
-        row += f"{p:>10.2f}{si:>9.4f}"
-    print(row)
-
-# ------------------------------------------------------------------ #
-# Mean across all images per stage
-# ------------------------------------------------------------------ #
-n = len(low_files)
-print("=" * (col + (10 + 9) * 5))
-print(f"\n{'Mean PSNR and SSIM per Stage (across all images)':^{col + (10+9)*5}}\n")
-print(f"{'Stage':<25} {'Mean PSNR (dB)':>15} {'Mean SSIM':>12}")
-print("-" * 54)
-for s in STAGES:
-    if stage_psnr[s]:
-        mp = sum(stage_psnr[s]) / len(stage_psnr[s])
-        ms = sum(stage_ssim[s]) / len(stage_ssim[s])
-        print(f"{s:<25} {mp:>15.4f} {ms:>12.4f}")
-print("-" * 54)
-print(f"\nImages evaluated: {len(stage_psnr[STAGES[0]])} / {n}")
-
-# ------------------------------------------------------------------ #
-# Export ablation study — CSV + Markdown table
-# ------------------------------------------------------------------ #
-ablation_data = {
-    s: (
-        sum(stage_psnr[s]) / len(stage_psnr[s]),
-        sum(stage_ssim[s]) / len(stage_ssim[s])
-    )
-    for s in STAGES if stage_psnr[s]
-}
-
-export_ablation_study(ablation_data, output_path="results/LOL/ablation_study.csv")
+if __name__ == "__main__":
+    raise SystemExit(main())

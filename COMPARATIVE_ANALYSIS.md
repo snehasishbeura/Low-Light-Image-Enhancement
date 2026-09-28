@@ -5,26 +5,43 @@
 | Stage | Technique Applied | LOL-v1 PSNR (dB) | LOL-v1 SSIM | LOL-v2 PSNR (dB) | LOL-v2 SSIM | PSNR Delta (v2-v1) | SSIM Delta (v2-v1) |
 |---|---|---|---|---|---|---|---|
 | Raw Low-Light | No enhancement (baseline) | 7.7733 | 0.1898 | 9.7182 | 0.2067 | +1.9449 | +0.0169 |
-| After Gamma | Gamma Correction (gamma=1.8) | 11.2736 | 0.5712 | 14.2027 | 0.6237 | +2.9291 | +0.0525 |
-| After CLAHE | Gamma + CLAHE (clipLimit=2.0, tile=8x8) | 14.3857 | 0.6358 | 18.1584 | 0.6566 | +3.7727 | +0.0208 |
-| After Bilateral | Gamma + CLAHE + Bilateral Filter (d=9) | 14.5003 | 0.7708 | 18.6041 | 0.8116 | +4.1038 | +0.0408 |
-| After Color Restore | Gamma + CLAHE + Bilateral + Color Restoration | 14.4863 | 0.7684 | 18.5211 | 0.8089 | +4.0348 | +0.0405 |
+| After Illumination | LIME illumination, gamma=0.7, guided radius=32 | 16.6943 | 0.6549 | 18.1694 | 0.6391 | +1.4751 | -0.0158 |
+| After Adaptive Tone | Crushed-exposure lift or tone gamma 0.82 plus partial gray-world | 18.8663 | 0.6361 | 17.3271 | 0.6037 | -1.5392 | -0.0324 |
+| After Detail Refine | Guided-filter denoise with edge detail restored | 20.1779 | 0.8011 | 18.6612 | 0.7582 | -1.5167 | -0.0429 |
+| After Color Restore | Midtone saturation x1.04 | 20.1431 | 0.8005 | 18.5642 | 0.7571 | -1.5789 | -0.0434 |
 
 ---
 
-## 2. Engineering Analysis
+## 2. What changed in the pipeline
 
-### 2.1 Why LOL-v2 Real Achieves a Higher Peak SSIM (0.8116 vs 0.7708)
+The previous pipeline was a fixed gamma (1.8), CLAHE on 8×8 tiles, a wide
+bilateral filter (d=9, σ=75), and a 5% saturation boost. On LOL eval15 that
+scored 14.49 dB PSNR and 0.7684 SSIM. The same code on LOL-v2 Real scored
+18.52 dB and 0.8089 SSIM. The failures were visible: dark patches where one
+gamma could not lift every region, and blur from the bilateral kernel.
 
-LOL-v2 Real images start from a stronger baseline: the raw low-light PSNR is 9.72 dB vs 7.77 dB for LOL-v1, and the raw SSIM is 0.2067 vs 0.1898. This reflects that LOL-v2 Real captures were taken under more controlled indoor conditions with a fixed camera rig, producing images with less motion blur and more spatially coherent noise than the diverse, hand-held LOL-v1 captures. Because the structural content is better preserved in the dark input, every subsequent enhancement stage has a cleaner signal to work with. Gamma correction alone lifts LOL-v2 SSIM to 0.6237 (+0.4170) versus 0.5712 (+0.3814) for LOL-v1, confirming that the structural advantage compounds at every stage. The final peak SSIM gap of 0.0408 (0.8116 vs 0.7708) is therefore a direct consequence of higher input image quality rather than any difference in the enhancement pipeline itself.
+The active pipeline replaces those stages. Illumination is estimated per pixel
+(LIME max-RGB, smoothed with a guided filter) and divided out, so dark regions
+are lifted more than regions that are already bright. A second tone step adds
+extra gain only when the capture is uniformly crushed, and a small capped
+gain when a frame is still short of a normal midtone. Denoising is a guided
+filter that puts strong edges back, instead of the wide bilateral blur.
+CLAHE tiles are no longer used.
 
-### 2.2 How the Bilateral Filter Mitigates Noise Amplification from CLAHE
+On LOL eval15 the final mean is 20.14 dB
+PSNR and 0.8005 SSIM. Illumination alone reaches
+16.69 dB. Detail refinement is what restores
+structure: SSIM moves to 0.8011.
 
-CLAHE (clipLimit=2.0, tileGridSize=8x8) redistributes the local histogram to boost contrast in dark regions. This redistribution unavoidably amplifies sensor noise: on LOL-v1 the SSIM rises only from 0.6358 to 0.7708 after CLAHE (a gain of 3.1121 dB PSNR) while on LOL-v2 it rises from 0.6566 to 0.8116 (a gain of 3.9557 dB PSNR), indicating that CLAHE introduces structured high-frequency artefacts in both datasets. The Bilateral Filter (d=9, sigmaColor=75, sigmaSpace=75) addresses this through edge-preserving smoothing: it computes a weighted average of neighbouring pixels where the weight decays both with spatial distance and with photometric difference. Noise pixels, which differ sharply in intensity from their neighbours, receive near-zero photometric weight and are effectively suppressed, while true edges retain full weight because both sides of an edge are spatially close but photometrically dissimilar only across the edge, not within each smooth region. The result is a large SSIM jump of +0.1350 on LOL-v1 and +0.1550 on LOL-v2 at the Bilateral stage, with only a modest PSNR change (+0.1146 dB and +0.4457 dB respectively), confirming that the filter's primary effect is structural fidelity restoration rather than pixel-level intensity correction. The larger absolute SSIM gain on LOL-v2 (+0.1550 vs +0.1350) is consistent with LOL-v2's more uniform noise distribution, which the bilateral kernel can suppress more completely than the spatially varying noise patterns present in LOL-v1.
+On LOL-v2 Real the final mean is 18.56 dB
+PSNR and 0.7571 SSIM. PSNR is slightly above the
+old 18.52 dB. SSIM is lower than the old 0.8089 because the old number was
+helped by heavy blur; the new outputs keep texture that the bilateral filter
+had removed. The detail-refine stage is still the SSIM jump on this set
+(0.7582).
 
-### 2.3 Color Restoration Trade-off
-
-The final Color Restoration step (HSV saturation x1.05) produces a marginal PSNR regression on both datasets: -0.0140 dB on LOL-v1 and -0.0830 dB on LOL-v2. This is expected: a uniform saturation boost shifts all hue-bearing pixels away from the ground-truth values, which are already well-saturated after gamma correction. The trade-off is acceptable for perceptual quality but confirms that the pipeline's PSNR peak is at the Bilateral stage (14.5003 dB for LOL-v1, 18.6041 dB for LOL-v2).
+Ground truth is used only after enhancement, to compute PSNR and SSIM.
+No stage reads the normal-light image.
 
 ---
 

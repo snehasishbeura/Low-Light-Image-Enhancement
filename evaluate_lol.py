@@ -17,7 +17,8 @@ Outputs (per dataset)
     ablation_study.csv           - per-stage mean PSNR, SSIM, delta
     ablation_curve.png           - dual-axis PSNR/SSIM chart
 
-Does NOT modify any existing module or algorithm.
+The enhancer never reads the ground-truth image. Metrics are computed
+afterwards, against the paired normal-light photo.
 """
 
 import os
@@ -32,23 +33,13 @@ import matplotlib.ticker as ticker
 import numpy as np
 
 import config
-from modules.image_io      import load_image
-from modules.preprocessing import preprocess
-from modules.gamma         import gamma_correction
-from modules.clahe         import apply_clahe
-from modules.bilateral     import bilateral_filter
-from modules.color_restore import restore_color
-from modules.evaluation    import evaluate, export_ablation_study
+from modules.image_io   import load_image
+from modules.pipeline   import STAGE_NAMES, enhance, run_stages
+from modules.evaluation import evaluate, export_ablation_study
 
 SUPPORTED_EXT = {".png", ".jpg", ".jpeg"}
 
-ABLATION_STAGES = [
-    "Raw Low-Light",
-    "After Gamma",
-    "After CLAHE",
-    "After Bilateral",
-    "After Color Restore",
-]
+ABLATION_STAGES = STAGE_NAMES
 
 
 # ------------------------------------------------------------------ #
@@ -112,23 +103,13 @@ def find_gt_lolv2(filename, gt_dir):
 # ------------------------------------------------------------------ #
 
 def run_pipeline(image):
-    """Exact pipeline — nothing changed."""
-    image = preprocess(image)
-    image = gamma_correction(image, config.GAMMA)
-    image = apply_clahe(image)
-    image = bilateral_filter(image)
-    image = restore_color(image)
-    return image
+    """Final enhanced image. Ground truth is not used."""
+    return enhance(image)
 
 
 def run_ablation_stages(image):
     """Return intermediate outputs at each stage."""
-    s0 = preprocess(image)
-    s1 = gamma_correction(s0, config.GAMMA)
-    s2 = apply_clahe(s1)
-    s3 = bilateral_filter(s2)
-    s4 = restore_color(s3)
-    return [s0, s1, s2, s3, s4]
+    return run_stages(image)
 
 
 # ------------------------------------------------------------------ #
@@ -141,8 +122,8 @@ def save_ablation_plot(ablation_data, save_path):
     ssim_vals = [ablation_data[s][1] for s in stages]
 
     x_labels = [
-        "Baseline\n(Raw)", "+Gamma\nCorrection",
-        "+CLAHE", "+Bilateral\nFilter", "+Color\nRestore",
+        "Baseline\n(Raw)", "+Illumination\n(LIME)",
+        "+Adaptive\nTone", "+Detail\nRefine", "+Color\nRestore",
     ]
     x = np.arange(len(stages))
 

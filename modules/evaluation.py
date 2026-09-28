@@ -16,14 +16,13 @@ def evaluate(original, enhanced):
     return psnr, ssim
 
 
-# Technique description for each cumulative stage
-_TECHNIQUES = {
-    "Raw Low-Light"      : "No enhancement (baseline)",
-    "After Gamma"        : "Gamma Correction (gamma=1.8)",
-    "After CLAHE"        : "Gamma + CLAHE (clipLimit=2.0, tile=8x8)",
-    "After Bilateral"    : "Gamma + CLAHE + Bilateral Filter (d=9)",
-    "After Color Restore": "Gamma + CLAHE + Bilateral + Color Restoration",
-}
+def _technique_for(stage):
+    """Look up the description written by the active pipeline."""
+    try:
+        from modules.pipeline import STAGE_TECHNIQUES
+        return STAGE_TECHNIQUES.get(stage, stage)
+    except Exception:
+        return stage
 
 
 def export_ablation_study(ablation_data, output_path="output/ablation_study.csv"):
@@ -46,7 +45,7 @@ def export_ablation_study(ablation_data, output_path="output/ablation_study.csv"
 
     for stage in stages:
         mean_psnr, mean_ssim = ablation_data[stage]
-        technique = _TECHNIQUES.get(stage, stage)
+        technique = _technique_for(stage)
         delta     = (mean_psnr - prev_psnr) if prev_psnr is not None else 0.0
         prev_psnr = mean_psnr
         rows.append({
@@ -78,7 +77,7 @@ def export_ablation_study(ablation_data, output_path="output/ablation_study.csv"
             f" {'Mean PSNR (dB)':>{c3}} | {'Mean SSIM':>{c4}} |"
             f" {'Delta PSNR Gain':>{c5}} |")
 
-    print("\n## Ablation Study - LOL eval15\n")
+    print("\n## Ablation Study\n")
     print(head)
     print(sep)
 

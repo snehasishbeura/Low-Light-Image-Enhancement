@@ -1,3 +1,5 @@
+"""Previous global gamma stage. Not used by the active pipeline."""
+
 import cv2
 import numpy as np
 

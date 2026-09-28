@@ -6,7 +6,6 @@ Generates 3-panel comparison figures for 5 representative LOL test images:
     LOW-LIGHT INPUT | OUR ENHANCED OUTPUT | GROUND TRUTH
 
 Saves to results/LOL/comparisons/
-Does NOT modify any existing module or algorithm.
 """
 
 import os
@@ -16,24 +15,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import config
-from modules.image_io      import load_image
-from modules.preprocessing import preprocess
-from modules.gamma         import gamma_correction
-from modules.clahe         import apply_clahe
-from modules.bilateral     import bilateral_filter
-from modules.color_restore import restore_color
-from modules.evaluation    import evaluate
+from modules.image_io    import load_image
+from modules.pipeline    import enhance
+from modules.evaluation  import evaluate
 
 COMPARISON_DIR = os.path.join("results", "LOL", "comparisons")
 SUPPORTED_EXT  = {".png", ".jpg", ".jpeg"}
 
-# 5 representative images selected across the full PSNR range:
-#   780.png  — best  result  (PSNR 22.32)
-#   748.png  — above average (PSNR 21.10)
-#     1.png  — near  average (PSNR 13.57)
-#   111.png  — below average (PSNR 11.33)
-#    23.png  — worst result  (PSNR  8.59)
-SELECTED = ["780.png", "748.png", "1.png", "111.png", "23.png"]
+# Same five scenes as the original report, plus the two frames that used to
+# stay dark and blotchy (55, 665) so those failures can be checked directly.
+SELECTED = ["780.png", "748.png", "1.png", "111.png", "23.png", "55.png", "665.png"]
 
 
 def find_groundtruth(filename, gt_dir):
@@ -49,12 +40,7 @@ def find_groundtruth(filename, gt_dir):
 
 
 def run_pipeline(image):
-    image = preprocess(image)
-    image = gamma_correction(image, config.GAMMA)
-    image = apply_clahe(image)
-    image = bilateral_filter(image)
-    image = restore_color(image)
-    return image
+    return enhance(image)
 
 
 def bgr_to_rgb(img):
@@ -123,16 +109,18 @@ def make_comparison(filename):
 def main():
     os.makedirs(COMPARISON_DIR, exist_ok=True)
 
-    print("\nGenerating comparison figures for 5 representative images...\n")
+    print("\nGenerating comparison figures...\n")
     print(f"{'#':<4} {'Filename':<12} {'Role':<18} {'PSNR':>9} {'SSIM':>8}  Saved")
     print("-" * 72)
 
     roles = {
-        "780.png": "Best result",
-        "748.png": "Above average",
-        "1.png":   "Near average",
-        "111.png": "Below average",
-        "23.png":  "Worst result",
+        "780.png": "Night street",
+        "748.png": "Indoor shelf",
+        "1.png":   "Indoor shelf",
+        "111.png": "Indoor room",
+        "23.png":  "Very dark room",
+        "55.png":  "Very dark room",
+        "665.png": "Very dark room",
     }
 
     for i, filename in enumerate(SELECTED, 1):

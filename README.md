@@ -1,382 +1,136 @@
-# 🌙 Low-Light Image Enhancement
+# Low-Light Image Enhancement
 
-A Python-based image processing project designed to enhance images captured under low-light conditions using a multi-stage image enhancement pipeline.
+A classical pipeline that lifts a low-light photo toward the brightness, local contrast, and sharpness of a normal exposure.
 
-The project combines **Gamma Correction, CLAHE, Bilateral Filtering, and Color Restoration** to improve brightness, local contrast, noise levels, edge preservation, and overall visual quality.
+It is built from the methods in the project papers:
 
----
+- **LIME** (Guo, Li, Ling) — per-pixel illumination from the max RGB channel, smoothed so the map follows edges
+- **Adaptive gamma / gray-world colour** (Huang, Cheng, Chiu, AGCWD family) — the lift depends on how crushed the capture is, instead of one gamma for every photo
+- **Edge-aware smoothing** — a guided filter keeps strong edges and drops fine grain
 
-## 📌 Project Overview
+Ground truth is never used inside the enhancer. It is only used afterwards, in `evaluate_lol.py`, to compute PSNR and SSIM.
 
-Images captured in low-light environments often suffer from:
+## What was going wrong
 
-- Poor brightness
-- Low contrast
-- Loss of details
-- Noise
-- Color distortion
-- Reduced visibility
+The previous stack was a fixed gamma (1.8), CLAHE on 8×8 tiles, a wide bilateral filter (`d=9`, `σ=75`), and a small saturation boost.
 
-This project implements an image enhancement pipeline using classical image processing techniques to improve the visual quality of low-light images.
+That produced three visible failures:
 
+- **Dark patches.** One gamma lifts the whole frame by the same curve, so a corner that is darker than the rest stays dark. CLAHE tiles then made those regions blotchy.
+- **Low brightness.** Very dark captures (no highlight left in the file) were still far below the normal-light photo.
+- **Blur.** The bilateral kernel removed the texture that is still visible in the ground truth: book titles, fabric, faces.
 
----
-
-
-
-## 🖼️ Results
-
-The following images show the output at each stage of the proposed enhancement pipeline.
-
-### Input Image
-
-![Input Image](screenshots/input.png)
-
-### Gamma Correction
-
-![Gamma Correction](screenshots/gamma.jpg)
-
-### CLAHE Enhancement
-
-![CLAHE Enhancement](screenshots/clahe.jpg)
-
-### Bilateral Filtering
-
-![Bilateral Filtering](screenshots/bilateral.jpg)
-
-### Final Enhanced Image
-
-![Final Enhanced Image](screenshots/final.jpg)
-## 🔄 Enhancement Pipeline
-
-
-## 📊 Enhancement Results
-
-| Stage | Result |
-|------|--------|
-| Input | <img src="screenshots/input.png" width="500"> |
-| Gamma Correction | <img src="screenshots/gamma.jpg" width="500"> |
-| CLAHE | <img src="screenshots/clahe.jpg" width="500"> |
-| Bilateral Filter | <img src="screenshots/bilateral.jpg" width="500"> |
-| Final Output | <img src="screenshots/final.jpg" width="500"> |
-
-The proposed pipeline is:
-
-``` text
-
-Input Image
-     ↓
-Preprocessing
-     ↓
-Gamma Correction
-     ↓
-CLAHE
-     ↓
-Bilateral Filter
-     ↓
-Color Restoration
-     ↓
-Evaluation
-     ↓
-Enhanced Output Image
-```
-
-### 1. Preprocessing
-
-The input image is loaded and prepared for further processing. The image is resized to maintain consistent dimensions during the enhancement process.
-
-### 2. Gamma Correction
-
-Gamma correction improves the overall brightness of the low-light image while attempting to preserve image details.
-
-### 3. CLAHE
-
-**Contrast Limited Adaptive Histogram Equalization (CLAHE)** improves local contrast by processing small regions of the image independently while limiting excessive contrast amplification.
-
-### 4. Bilateral Filtering
-
-A bilateral filter is used to reduce noise while preserving important edges and structural details.
-
-### 5. Color Restoration
-
-Color restoration is applied to improve the appearance of colors after brightness and contrast enhancement.
-
-### 6. Evaluation
-
-The enhanced image can be evaluated using image-quality metrics such as:
-
-- PSNR — Peak Signal-to-Noise Ratio
-- SSIM — Structural Similarity Index
-
-> Note: For rigorous PSNR/SSIM evaluation, the enhanced image should be compared with a corresponding normal-light ground-truth/reference image. Comparing the enhanced result directly with the low-light input mainly measures similarity to the input rather than true enhancement quality.
-
----
-
-## 🛠️ Technologies Used
-
-- Python
-- OpenCV
-- NumPy
-- scikit-image
-- Matplotlib
-- Pillow
-- VS Code
-- Git & GitHub
-
----
-
-## 📁 Project Structure
+## Pipeline
 
 ```text
-Low-Light-Image-Enhancement/
-│
-├── input/
-│   └── input.png
-│
-├── output/
-│   ├── 1_gamma.jpg
-│   ├── 2_clahe.jpg
-│   ├── 3_bilateral.jpg
-│   └── 4_final.jpg
-│
-├── modules/
-│   ├── __init__.py
-│   ├── image_io.py
-│   ├── preprocessing.py
-│   ├── gamma.py
-│   ├── clahe.py
-│   ├── bilateral.py
-│   ├── color_restore.py
-│   └── evaluation.py
-│
-├── utils/
-│   ├── display.py
-│   └── save_images.py
-│
-├── config.py
-├── main.py
-├── requirements.txt
-├── .gitignore
-└── README.md
+Low-light input
+      │
+      ▼
+Illumination map          max(R, G, B), guided-filter smooth
+      │                   divide by illumination^0.7
+      ▼
+Adaptive tone             extra gain only if the frame is uniformly crushed
+      │                   otherwise a mild gamma, plus a capped midtone lift
+      │                   partial gray-world balance
+      ▼
+Detail refine             guided filter, strong edges added back
+      ▼
+Colour restore            a little saturation on midtones only
+      │
+      ▼
+Enhanced image
 ```
 
----
+CLAHE and the wide bilateral filter are not in this path. The old functions are still in `modules/gamma.py`, `modules/clahe.py`, and `modules/bilateral.py` so the previous stages can be read, but nothing calls them.
 
-## ⚙️ Installation
+Parameters live in `config.py`.
 
-### 1. Clone the repository
+## Results on the paired test sets
 
-```bash
-git clone https://github.com/sanjaysahoo99/Low-Light-Image-Enhancement.git
-```
+Same pairs as before. Higher PSNR is closer in pixel value. Higher SSIM is closer in structure.
 
-Move into the project:
+| Dataset | Images | Previous PSNR | Previous SSIM | This pipeline PSNR | This pipeline SSIM |
+|---|---:|---:|---:|---:|---:|
+| LOL eval15 | 15 | 14.49 dB | 0.7684 | **20.14 dB** | **0.8005** |
+| LOL-v2 Real test | 100 | 18.52 dB | 0.8089 | **18.56 dB** | 0.7571 |
 
-```bash
-cd Low-Light-Image-Enhancement
-```
+LOL is the set that looked dark and patchy. Mean PSNR there rises by about 5.7 dB, and the frames that used to fail move with it: `23.png` from 8.59 dB to 16.82 dB, `111.png` from 11.33 dB to 20.69 dB, `55.png` from 8.75 dB to 15.78 dB.
 
-### 2. Create a virtual environment
+LOL-v2 PSNR is slightly higher than before. SSIM is lower because the old bilateral filter was blurring the output toward the smoother ground truth. The new outputs keep more of the real texture. Side-by-side figures are in `results/`.
+
+Comparisons (low-light | enhanced | ground truth):
+
+- LOL: `results/LOL/comparisons/`
+- LOL-v2 Real, three highest-PSNR frames: `results/LOLv2_Real/comparisons/`
+
+Per-image scores: `results/LOL/metrics.csv` and `results/LOLv2_Real/metrics.csv`.
+
+## Stage screenshots
+
+Input, then each stage, on `input/input.png`.
+
+| Stage | Image |
+|---|---|
+| Input | ![input](screenshots/input.jpg) |
+| Illumination | ![illumination](screenshots/illumination.jpg) |
+| Adaptive tone | ![tone](screenshots/tone.jpg) |
+| Detail refine | ![refine](screenshots/refine.jpg) |
+| Final | ![final](screenshots/final.jpg) |
+
+## Setup
 
 ```bash
 python -m venv venv
-```
-
-### 3. Activate it
-
-Windows Command Prompt:
-
-```bash
-venv\Scripts\activate
-```
-
-Windows PowerShell:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-### 4. Install dependencies
-
-```bash
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
----
-
-## ▶️ How to Run
-
-Place a low-light image inside the `input` directory.
-
-For example:
-
-```text
-input/input.png
-```
-
-Make sure `config.py` points to the correct image:
-
-```python
-INPUT_IMAGE = "input/input.png"
-```
-
-Run:
+Put low-light photos in `input/` and run:
 
 ```bash
 python main.py
 ```
 
----
+Stage images are written to `output/`.
 
-## 📊 Generated Results
+## Scoring against ground truth
 
-After execution, the different enhancement stages are saved inside the `output` folder.
+Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light). Point `config.py` at the folders if auto-detect does not find them. The file already checks, in order:
 
-```text
-1_gamma.jpg
-2_clahe.jpg
-3_bilateral.jpg
-4_final.jpg
-```
+- `data/hf/LOLdataset/eval15/{low,high}` and `data/hf/lol-v2-real/Test/{Low,Normal}`
+- `data/LOLdataset/...` and `data/lol-v2-real/...`
+- the original Windows paths
 
-These images make it possible to observe the effect of each processing stage individually.
-
----
-
-## 📈 Evaluation
-
-The program reports image-quality measurements such as:
-
-```text
-PSNR : XX.XX
-SSIM : X.XXXX
-```
-
-Higher PSNR generally indicates lower reconstruction error relative to a reference image, while SSIM measures structural similarity.
-
----
-
-## LOL Dataset Evaluation
-
-### Why the LOL Dataset
-
-The [LOL (Low-Light) dataset](https://daooshee.github.io/BMVC2018website/) is a widely used benchmark for low-light image enhancement research. It provides paired images — each low-light input has a corresponding normal-light ground-truth image captured under the same scene. This pairing makes it possible to compute reference-based quality metrics (PSNR and SSIM) that objectively measure how close the enhanced output is to the ground truth.
-
-### Dataset Structure
-
-The LOL dataset contains two subsets:
-
-- `our485/` — 485 training pairs
-- `eval15/` — 15 test pairs used for evaluation
-
-Each subset has a `low/` folder (low-light inputs) and a `high/` folder (normal-light ground truths). Filenames correspond directly between the two folders.
-
-> The dataset files are **not included** in this repository. Download the LOL dataset separately and update the paths in `config.py`.
-
-### Evaluation Approach
-
-The existing enhancement pipeline was evaluated on the 15 test pairs from `eval15/` **without modifying the algorithm or any of its parameters**. The same four-stage pipeline used in `main.py` was applied to every test image:
-
-```text
-Low-light input
-      ↓
-Gamma Correction (γ = 1.8)
-      ↓
-CLAHE (clipLimit = 2.0, tileGridSize = 8×8)
-      ↓
-Bilateral Filter (d = 9, σColor = 75, σSpace = 75)
-      ↓
-Color Restoration (saturation × 1.05)
-      ↓
-Enhanced output
-```
-
-### Metrics
-
-Two standard full-reference image quality metrics were used:
-
-- **PSNR** (Peak Signal-to-Noise Ratio) — measures pixel-level fidelity relative to the ground truth. Higher is better.
-- **SSIM** (Structural Similarity Index) — measures perceptual similarity in structure, luminance, and contrast. Range 0–1, higher is better.
-
-### Results
-
-| Metric | Value |
-|--------|-------|
-| Test images evaluated | 15 / 15 |
-| Average PSNR | 14.49 dB |
-| Average SSIM | 0.7684 |
-| Minimum PSNR | 8.59 dB |
-| Maximum PSNR | 22.32 dB |
-| Minimum SSIM | 0.5729 |
-| Maximum SSIM | 0.9058 |
-
-Per-image results are saved in `results/LOL/metrics.csv`.
-
-### Evaluation Script
-
-The evaluation is implemented in `evaluate_lol.py` at the root of the repository. It is fully separate from the main pipeline script and does not alter any module.
-
-### How to Run the Evaluation
-
-**1. Download the LOL dataset** and extract it locally.
-
-**2. Update `config.py`** with the paths to your local copy:
-
-```python
-DATASET_LOW  = r"path/to/LOLdataset/eval15/low"
-DATASET_HIGH = r"path/to/LOLdataset/eval15/high"
-```
-
-**3. Run the evaluation:**
+LOL-v2 pairs `low00690.png` with `normal00690.png`. LOL uses the same filename in both folders.
 
 ```bash
-python evaluate_lol.py
+python evaluate_lol.py --dataset lol
+python evaluate_lol.py --dataset lolv2
+python make_comparisons.py
+python make_comparisons_v2.py
+python generate_final_report.py
 ```
 
-**Outputs generated:**
+## Layout
 
 ```text
-results/
-└── LOL/
-    ├── enhanced/          ← enhanced output for every test image
-    ├── comparisons/       ← side-by-side comparison figures
-    ├── metrics.csv        ← per-image PSNR and SSIM
-    └── summary.txt        ← average, min, and max metrics
+config.py                 parameters and dataset paths
+main.py                   enhance images in input/
+evaluate_lol.py           PSNR, SSIM, ablation on LOL or LOL-v2
+make_comparisons.py       LOL side-by-side figures
+make_comparisons_v2.py    LOL-v2 figures for the top PSNR frames
+modules/pipeline.py       stage order
+modules/illumination.py   LIME map and division
+modules/tone.py           crushed-exposure lift and midtone anchor
+modules/refine.py         edge-preserving denoise
+modules/color_restore.py  midtone saturation
+modules/evaluation.py     PSNR and SSIM
 ```
 
----
+## Limits
 
-## 🚀 Future Improvements
+A single classical pipeline cannot know whether a scene is supposed to be a bright room or a dark street. Frames whose ground truth is deliberately dim (some night shots in LOL) can come out a little brighter than that photo. Very crushed frames still show some of the sensor noise that was hiding in the blacks; the refine stage suppresses it without the old bilateral smear.
 
-Possible improvements include:
+## Author
 
-- Automatic/adaptive gamma selection
-- Improved color correction
-- Noise estimation
-- NIQE/BRISQUE no-reference quality evaluation
-- Testing on standard low-light datasets
-- Comparison with LIME and other enhancement algorithms
-- Deep-learning-based enhancement
-- Batch image processing
-- GUI or web application
-- Quantitative comparison of multiple enhancement methods
-
----
-
-## 🎯 Objective
-
-The objective of this project is to develop an effective and understandable low-light image enhancement pipeline using classical computer vision techniques while maintaining image details, reducing noise, and improving visual appearance.
-
----
-
-## 👨‍💻 Author
-
-**Sanjay Kumar Sahoo**
-
-B.Tech — Computer Science & Engineering
-
----
-
-## ⭐ Support
-
-If you find this project useful, consider giving the repository a ⭐.
+Sanjay Kumar Sahoo — B.Tech, Computer Science & Engineering

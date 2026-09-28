@@ -34,9 +34,9 @@ with open(CSV_PATH, newline="", encoding="utf-8") as f:
 # short x-axis labels for readability
 x_labels = [
     "Baseline\n(Raw)",
-    "+Gamma\nCorrection",
-    "+CLAHE",
-    "+Bilateral\nFilter",
+    "+Illumination\n(LIME)",
+    "+Adaptive\nTone",
+    "+Detail\nRefine",
     "+Color\nRestore",
 ]
 

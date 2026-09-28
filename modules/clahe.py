@@ -1,3 +1,9 @@
+"""Previous CLAHE stage. Not used by the active pipeline.
+
+8×8 tiles were a source of the dark patches. Local contrast now comes from
+the illumination map instead.
+"""
+
 import cv2
 
 def apply_clahe(image):
