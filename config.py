@@ -36,6 +36,19 @@ LOLV2_REAL_HIGH = _first_existing(
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Real_captured\Test\Normal",
 )
 
+# LOL-v2 Synthetic test set. The low and normal folders share filenames
+# (for example r00816405t.png in both).
+LOLV2_SYN_LOW = _first_existing(
+    os.path.join(ROOT, "data", "hf", "lol-v2-synthetic", "Test", "Low"),
+    os.path.join(ROOT, "data", "lol-v2-synthetic", "Test", "Low"),
+    r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Synthetic\Test\Low",
+)
+LOLV2_SYN_HIGH = _first_existing(
+    os.path.join(ROOT, "data", "hf", "lol-v2-synthetic", "Test", "Normal"),
+    os.path.join(ROOT, "data", "lol-v2-synthetic", "Test", "Normal"),
+    r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Synthetic\Test\Normal",
+)
+
 OUTPUT_FOLDER = "output"
 
 # --- 1. Illumination (LIME) -------------------------------------------------

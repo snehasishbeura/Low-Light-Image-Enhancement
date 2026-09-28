@@ -53,17 +53,21 @@ Same pairs as before. Higher PSNR is closer in pixel value. Higher SSIM is close
 |---|---:|---:|---:|---:|---:|
 | LOL eval15 | 15 | 14.49 dB | 0.7684 | **20.14 dB** | **0.8005** |
 | LOL-v2 Real test | 100 | 18.52 dB | 0.8089 | **18.56 dB** | 0.7571 |
+| LOL-v2 Synthetic test | 100 | — | — | **19.77 dB** | **0.8288** |
 
 LOL is the set that looked dark and patchy. Mean PSNR there rises by about 5.7 dB, and the frames that used to fail move with it: `23.png` from 8.59 dB to 16.82 dB, `111.png` from 11.33 dB to 20.69 dB, `55.png` from 8.75 dB to 15.78 dB.
 
 LOL-v2 PSNR is slightly higher than before. SSIM is lower because the old bilateral filter was blurring the output toward the smoother ground truth. The new outputs keep more of the real texture. Side-by-side figures are in `results/`.
 
+The synthetic test was not part of the old gamma–CLAHE run, so there is no previous score for it. The raw synthetic inputs already sit at 11.22 dB / 0.4450 SSIM, higher than the real sets, because the darkness is generated rather than captured. Illumination recovery does most of the work (20.23 dB / 0.8948). The later denoise trims a little of that SSIM, because these ground truths are clean and sharp. The full test still finishes at 19.77 dB, with a best frame of 31.08 dB (`r191488c6t.png`) and a weakest of 10.19 dB (`r01058910t.png`), where the output stays soft and washed out.
+
 Comparisons (low-light | enhanced | ground truth):
 
 - LOL: `results/LOL/comparisons/`
 - LOL-v2 Real, three highest-PSNR frames: `results/LOLv2_Real/comparisons/`
+- LOL-v2 Synthetic, best, median, and lowest PSNR: `results/LOLv2_Synthetic/comparisons/`
 
-Per-image scores: `results/LOL/metrics.csv` and `results/LOLv2_Real/metrics.csv`.
+Per-image scores: `results/LOL/metrics.csv`, `results/LOLv2_Real/metrics.csv`, and `results/LOLv2_Synthetic/metrics.csv`.
 
 ## Stage screenshots
 
@@ -98,16 +102,19 @@ Stage images are written to `output/`.
 Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light). Point `config.py` at the folders if auto-detect does not find them. The file already checks, in order:
 
 - `data/hf/LOLdataset/eval15/{low,high}` and `data/hf/lol-v2-real/Test/{Low,Normal}`
-- `data/LOLdataset/...` and `data/lol-v2-real/...`
+- `data/hf/lol-v2-synthetic/Test/{Low,Normal}`
+- `data/LOLdataset/...`, `data/lol-v2-real/...`, and `data/lol-v2-synthetic/...`
 - the original Windows paths
 
-LOL-v2 pairs `low00690.png` with `normal00690.png`. LOL uses the same filename in both folders.
+LOL-v2 Real pairs `low00690.png` with `normal00690.png`. LOL and LOL-v2 Synthetic use the same filename in both folders.
 
 ```bash
 python evaluate_lol.py --dataset lol
 python evaluate_lol.py --dataset lolv2
+python evaluate_lol.py --dataset lolv2syn
 python make_comparisons.py
 python make_comparisons_v2.py
+python make_comparisons_v2.py --dataset lolv2syn
 python generate_final_report.py
 ```
 

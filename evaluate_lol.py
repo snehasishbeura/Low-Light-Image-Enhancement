@@ -5,8 +5,9 @@ Benchmarks the existing enhancement pipeline on LOL or LOL-v2 Real datasets.
 
 Usage
 -----
-  python evaluate_lol.py --dataset lol        # LOL eval15   (15 images)
-  python evaluate_lol.py --dataset lolv2      # LOL-v2 Real  (100 images)
+  python evaluate_lol.py --dataset lol        # LOL eval15        (15 images)
+  python evaluate_lol.py --dataset lolv2      # LOL-v2 Real       (100 images)
+  python evaluate_lol.py --dataset lolv2syn   # LOL-v2 Synthetic  (100 images)
 
 Outputs (per dataset)
 ---------------------
@@ -63,8 +64,18 @@ def get_dataset_config(dataset):
             "results_dir": os.path.join("results", "LOLv2_Real"),
             "pairing"    : "lolv2",        # low00690.png <-> normal00690.png
         }
+    elif dataset == "lolv2syn":
+        return {
+            "name"       : "LOL-v2 Synthetic",
+            "low_dir"    : config.LOLV2_SYN_LOW,
+            "high_dir"   : config.LOLV2_SYN_HIGH,
+            "results_dir": os.path.join("results", "LOLv2_Synthetic"),
+            "pairing"    : "exact",        # same filename in Low/ and Normal/
+        }
     else:
-        raise ValueError(f"Unknown dataset: {dataset}. Use 'lol' or 'lolv2'.")
+        raise ValueError(
+            f"Unknown dataset: {dataset}. Use 'lol', 'lolv2', or 'lolv2syn'."
+        )
 
 
 # ------------------------------------------------------------------ #
@@ -424,9 +435,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--dataset",
-        choices=["lol", "lolv2"],
+        choices=["lol", "lolv2", "lolv2syn"],
         default="lol",
-        help="Dataset to evaluate: 'lol' (eval15) or 'lolv2' (Real_captured/Test). Default: lol"
+        help="Dataset: 'lol' (eval15), 'lolv2' (Real test), or 'lolv2syn' (Synthetic test)."
     )
     args = parser.parse_args()
     main(args.dataset)

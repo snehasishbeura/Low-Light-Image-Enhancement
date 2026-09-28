@@ -1,18 +1,19 @@
 """
 make_comparisons_v2.py
 ----------------------
-Reads results/LOLv2_Real/metrics.csv, selects the top 3 images by
-highest PSNR, and saves a 3-panel comparison figure for each:
+Reads a LOL-v2 metrics.csv and saves 3-panel figures:
 
     LOW-LIGHT INPUT | OUR ENHANCED OUTPUT | GROUND TRUTH
 
-Saves to results/LOLv2_Real/comparisons/
-Does NOT modify any existing module or algorithm.
+  python make_comparisons_v2.py              # LOL-v2 Real, top 3 by PSNR
+  python make_comparisons_v2.py --dataset lolv2syn
+                                             # Synthetic: best, median, worst
 """
 
 import os
 import re
 import csv
+import argparse
 import cv2
 import matplotlib
 matplotlib.use("Agg")
@@ -20,13 +21,34 @@ import matplotlib.pyplot as plt
 
 import config
 
-METRICS_CSV    = os.path.join("results", "LOLv2_Real", "metrics.csv")
-ENHANCED_DIR   = os.path.join("results", "LOLv2_Real", "enhanced")
-COMPARISON_DIR = os.path.join("results", "LOLv2_Real", "comparisons")
-LOW_DIR        = config.LOLV2_REAL_LOW
-HIGH_DIR       = config.LOLV2_REAL_HIGH
 SUPPORTED_EXT  = {".png", ".jpg", ".jpeg"}
 TOP_N          = 3
+
+
+def dataset_paths(dataset):
+    if dataset == "lolv2syn":
+        root = os.path.join("results", "LOLv2_Synthetic")
+        return {
+            "name": "LOL-v2 Synthetic",
+            "metrics": os.path.join(root, "metrics.csv"),
+            "enhanced": os.path.join(root, "enhanced"),
+            "comparisons": os.path.join(root, "comparisons"),
+            "low": config.LOLV2_SYN_LOW,
+            "high": config.LOLV2_SYN_HIGH,
+            "pairing": "exact",
+            "eval_flag": "lolv2syn",
+        }
+    root = os.path.join("results", "LOLv2_Real")
+    return {
+        "name": "LOL-v2 Real",
+        "metrics": os.path.join(root, "metrics.csv"),
+        "enhanced": os.path.join(root, "enhanced"),
+        "comparisons": os.path.join(root, "comparisons"),
+        "low": config.LOLV2_REAL_LOW,
+        "high": config.LOLV2_REAL_HIGH,
+        "pairing": "lolv2",
+        "eval_flag": "lolv2",
+    }
 
 
 # ------------------------------------------------------------------ #
@@ -50,21 +72,23 @@ def read_metrics(csv_path):
     return sorted(rows, key=lambda x: x[1], reverse=True)
 
 
-def find_gt(low_filename, gt_dir):
-    """
-    LOLv2 pairing: extract numeric ID from low filename,
-    find matching normal file.
-    e.g. low00763.png -> 763 -> normal00763.png
-    """
+def find_gt(low_filename, gt_dir, pairing):
+    """Locate the normal-light partner for a low-light filename."""
+    if pairing == "exact":
+        candidate = os.path.join(gt_dir, low_filename)
+        return candidate if os.path.isfile(candidate) else None
+
+    # Real captured: low00763.png -> normal00763.png
     nums = re.findall(r"\d+", low_filename)
     if not nums:
         return None
     target_id = str(int(nums[-1]))
-    for f in os.listdir(gt_dir):
-        if os.path.splitext(f)[1].lower() in SUPPORTED_EXT:
-            f_nums = re.findall(r"\d+", f)
-            if f_nums and str(int(f_nums[-1])) == target_id:
-                return os.path.join(gt_dir, f)
+    for name in os.listdir(gt_dir):
+        if os.path.splitext(name)[1].lower() not in SUPPORTED_EXT:
+            continue
+        file_nums = re.findall(r"\d+", name)
+        if file_nums and str(int(file_nums[-1])) == target_id:
+            return os.path.join(gt_dir, name)
     return None
 
 
@@ -72,12 +96,12 @@ def bgr_to_rgb(img):
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
-def make_comparison(rank, filename, psnr, ssim):
+def make_comparison(paths, rank_label, filename, psnr, ssim):
     stem = os.path.splitext(filename)[0]
 
-    low_path      = os.path.join(LOW_DIR, filename)
-    enhanced_path = os.path.join(ENHANCED_DIR, f"{stem}.png")
-    gt_path       = find_gt(filename, HIGH_DIR)
+    low_path      = os.path.join(paths["low"], filename)
+    enhanced_path = os.path.join(paths["enhanced"], f"{stem}.png")
+    gt_path       = find_gt(filename, paths["high"], paths["pairing"])
 
     if not os.path.isfile(low_path):
         print(f"  [ERROR] Low-light image not found: {low_path}")
@@ -120,14 +144,14 @@ def make_comparison(rank, filename, psnr, ssim):
             spine.set_linewidth(2.5)
 
     fig.suptitle(
-        f"Rank #{rank} by PSNR  |  {filename}  |  "
+        f"{paths['name']}  |  {rank_label}  |  {filename}  |  "
         f"PSNR: {psnr:.2f} dB  |  SSIM: {ssim:.4f}",
         color="white", fontsize=12, y=1.01
     )
 
     plt.tight_layout(pad=1.5)
 
-    out_path = os.path.join(COMPARISON_DIR, f"{stem}_comparison.png")
+    out_path = os.path.join(paths["comparisons"], f"{stem}_comparison.png")
     plt.savefig(out_path, dpi=150, bbox_inches="tight",
                 facecolor=fig.get_facecolor())
     plt.close()
@@ -139,33 +163,65 @@ def make_comparison(rank, filename, psnr, ssim):
 # Main
 # ------------------------------------------------------------------ #
 
-def main():
-    os.makedirs(COMPARISON_DIR, exist_ok=True)
+def select_rows(all_results, dataset):
+    """Real keeps the historical top-3. Synthetic also shows a middle and a weak frame."""
+    if dataset != "lolv2syn":
+        return [(f"Rank #{i} by PSNR", row) for i, row in enumerate(all_results[:TOP_N], 1)]
 
-    if not os.path.isfile(METRICS_CSV):
-        print(f"[ERROR] metrics.csv not found at: {METRICS_CSV}")
-        print("Run: python evaluate_lol.py --dataset lolv2  first.")
+    best = all_results[0]
+    worst = all_results[-1]
+    middle = all_results[len(all_results) // 2]
+    chosen = [
+        ("Best PSNR", best),
+        ("Median PSNR", middle),
+        ("Lowest PSNR", worst),
+    ]
+    # Drop duplicates if the set is tiny.
+    seen = set()
+    unique = []
+    for label, row in chosen:
+        if row[0] in seen:
+            continue
+        seen.add(row[0])
+        unique.append((label, row))
+    return unique
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Side-by-side LOL-v2 comparisons.")
+    parser.add_argument(
+        "--dataset",
+        choices=["lolv2", "lolv2syn"],
+        default="lolv2",
+        help="lolv2 = Real test, lolv2syn = Synthetic test.",
+    )
+    args = parser.parse_args()
+    paths = dataset_paths(args.dataset)
+    os.makedirs(paths["comparisons"], exist_ok=True)
+
+    if not os.path.isfile(paths["metrics"]):
+        print(f"[ERROR] metrics.csv not found at: {paths['metrics']}")
+        print(f"Run: python evaluate_lol.py --dataset {paths['eval_flag']}  first.")
         return
 
-    all_results = read_metrics(METRICS_CSV)
-
+    all_results = read_metrics(paths["metrics"])
     if not all_results:
         print("[ERROR] No valid rows found in metrics.csv.")
         return
 
-    top = all_results[:TOP_N]
+    picked = select_rows(all_results, args.dataset)
 
-    print(f"\nTop {TOP_N} images by PSNR from LOLv2 Real evaluation:\n")
-    print(f"{'Rank':<6} {'Filename':<20} {'PSNR (dB)':>10} {'SSIM':>8}")
-    print("-" * 48)
+    print(f"\n{paths['name']} comparisons:\n")
+    print(f"{'Role':<16} {'Filename':<22} {'PSNR (dB)':>10} {'SSIM':>8}")
+    print("-" * 62)
 
-    for rank, (filename, psnr, ssim) in enumerate(top, 1):
-        result = make_comparison(rank, filename, psnr, ssim)
+    for label, (filename, psnr, ssim) in picked:
+        result = make_comparison(paths, label, filename, psnr, ssim)
         status = os.path.basename(result) if result else "FAILED"
-        print(f"#{rank:<5} {filename:<20} {psnr:>10.2f} {ssim:>8.4f}  -> {status}")
+        print(f"{label:<16} {filename:<22} {psnr:>10.2f} {ssim:>8.4f}  -> {status}")
 
-    print("-" * 48)
-    print(f"\nComparisons saved to: {os.path.abspath(COMPARISON_DIR)}")
+    print("-" * 62)
+    print(f"\nComparisons saved to: {os.path.abspath(paths['comparisons'])}")
 
 
 if __name__ == "__main__":
