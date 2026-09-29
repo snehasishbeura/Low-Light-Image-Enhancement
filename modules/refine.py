@@ -1,12 +1,8 @@
 """
 Edge-preserving refine.
 
-The previous pipeline ran a bilateral filter with a wide kernel
-(d = 9, sigma = 75). That removed CLAHE noise, but it also wiped the texture
-the ground-truth photo still has: book spines, fabric, facial detail.
-
-This stage smooths with a guided filter, then adds back only the detail whose
-amplitude is larger than a noise threshold. Edges stay. Fine grain does not.
+Smooth with a guided filter, then add back only the detail whose amplitude
+is larger than a noise threshold. Edges stay. Fine grain does not.
 Crushed exposures, which were amplified the most, use a stronger smooth.
 """
 

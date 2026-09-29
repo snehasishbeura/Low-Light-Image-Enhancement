@@ -41,8 +41,6 @@ Colour restore            a little saturation on midtones only
 Enhanced image
 ```
 
-CLAHE and the wide bilateral filter are not in this path. The old functions are still in `modules/gamma.py`, `modules/clahe.py`, and `modules/bilateral.py` so the previous stages can be read, but nothing calls them.
-
 Parameters live in `config.py`.
 
 ## Results on the paired test sets
@@ -153,7 +151,7 @@ modules/evaluation.py     PSNR and SSIM
 
 ## Limits
 
-A single classical pipeline cannot know whether a scene is supposed to be a bright room or a dark street. Frames whose ground truth is deliberately dim (some night shots in LOL) can come out a little brighter than that photo. Very crushed frames still show some of the sensor noise that was hiding in the blacks; the refine stage suppresses it without the old bilateral smear.
+A single classical pipeline cannot know whether a scene is supposed to be a bright room or a dark street. Frames whose ground truth is deliberately dim (some night shots in LOL) can come out a little brighter than that photo. Very crushed frames still show some of the sensor noise that was hiding in the blacks; the refine stage suppresses that grain.
 
 ## Author
 
