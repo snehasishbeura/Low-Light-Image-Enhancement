@@ -155,4 +155,4 @@ A single classical pipeline cannot know whether a scene is supposed to be a brig
 
 ## Author
 
-Sanjay Kumar Sahoo — B.Tech, Computer Science & Engineering
+[Snehasish Beura](https://github.com/snehasishbeura)
