@@ -30,14 +30,16 @@ def refine_illumination(illumination):
     return np.clip(refined, 1e-3, 1.0)
 
 
-def recover_reflectance(image, illumination):
+def recover_reflectance(image, illumination, gamma=None):
     """
     Recover a brighter image by dividing out a gamma-compressed illumination.
 
     ``gamma`` in (0, 1] controls the strength. Values closer to 1 lift shadows
-    harder. The same map is applied to every channel, so colour ratios from
-    the input are kept.
+    harder. It may be one number or a per-pixel map. The same value is applied
+    to every channel, so colour ratios from the input are kept.
     """
-    compressed = np.power(illumination, config.ILLUM_GAMMA)
+    if gamma is None:
+        gamma = config.ILLUM_GAMMA
+    compressed = np.power(illumination, gamma)
     recovered = image / (compressed[..., None] + config.ILLUM_EPS_DIV)
     return np.clip(recovered, 0.0, 1.0)

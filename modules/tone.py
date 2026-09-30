@@ -48,6 +48,45 @@ def is_crushed(illumination):
     )
 
 
+def _smoothstep(values):
+    t = np.clip(values, 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def is_mixed_light(illumination):
+    """
+    True when one frame contains both a dark mass and a bright tail.
+
+    A uniformly dark capture fails this test and keeps the single global gamma.
+    """
+    p10 = float(np.percentile(illumination, 10))
+    p99 = float(np.percentile(illumination, 99))
+    mean = float(illumination.mean())
+    return (
+        p99 > config.MIX_P99
+        and p10 < config.MIX_P10
+        and mean > config.MIX_MEAN
+    )
+
+
+def paired_gamma_map(illumination):
+    """
+    Two illumination exponents blended by the local light.
+
+    Shadows use a stronger exponent when the dark region is most of the frame,
+    and the ordinary exponent when the dark pixels are only a small part.
+    Highlights always use the smaller exponent so they are not lifted as hard.
+    """
+    dark_mass = float(np.mean(illumination < config.MIX_DARK))
+    if dark_mass >= config.MIX_DARK_MASS:
+        gamma_shadow = config.GAMMA_SHADOW_LARGE
+    else:
+        gamma_shadow = config.GAMMA_SHADOW
+    span = config.PAIR_T_HI - config.PAIR_T_LO
+    opened = _smoothstep((illumination - config.PAIR_T_LO) / span)
+    return gamma_shadow * (1.0 - opened) + config.GAMMA_HIGHLIGHT * opened
+
+
 def apply_adaptive_tone(image, illumination):
     """Return the tone-mapped float image and whether the crushed path was used."""
     if is_crushed(illumination):

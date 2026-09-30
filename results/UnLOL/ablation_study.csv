@@ -1,6 +1,6 @@
 Stage,Technique Applied,Mean PSNR (dB),Mean SSIM,Delta PSNR Gain
 Raw Low-Light,No enhancement (baseline),10.3573,0.4615,0.0
-After Illumination,"LIME illumination, gamma=0.7, guided radius=32",13.1807,0.6126,2.8234
-After Adaptive Tone,Crushed-exposure lift or tone gamma 0.82 plus partial gray-world,12.9534,0.6085,-0.2273
-After Detail Refine,Guided-filter denoise with edge detail restored,13.0223,0.6074,0.0689
-After Color Restore,Midtone saturation x1.04,12.9952,0.6067,-0.0271
+After Illumination,"LIME illumination, gamma=0.7, guided radius=32",13.3966,0.614,3.0393
+After Adaptive Tone,"Global tone, or paired shadow/highlight gamma on mixed light, plus partial gray-world",13.5003,0.6146,0.1037
+After Detail Refine,Guided-filter denoise with edge detail restored,13.5687,0.6145,0.0685
+After Color Restore,Midtone saturation x1.04,13.537,0.6137,-0.0317

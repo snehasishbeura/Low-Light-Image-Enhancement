@@ -92,6 +92,23 @@ ANCHOR_CAP = 1.10
 ANCHOR_KNEE = 0.78
 GRAY_WORLD = 0.10          # 0 = off, 1 = full gray-world
 
+# Mixed light: a bright tail and a dark mass in the same frame.
+# LOL's illumination p99 stays under about 0.38, so this path does not run there.
+MIX_P99 = 0.55
+MIX_P10 = 0.18
+# Mean illumination above this means the frame is already partly lit.
+# Dark scenes, including LOL and a lamp in a dark room, keep the single gamma.
+MIX_MEAN = 0.30
+# A large dark mass is underexposure. A small one is more often a dark object.
+MIX_DARK = 0.10
+MIX_DARK_MASS = 0.50
+# Paired illumination exponents. Low T uses the shadow gamma, high T the highlight gamma.
+PAIR_T_LO = 0.18
+PAIR_T_HI = 0.55
+GAMMA_SHADOW = 0.70            # same strength as ILLUM_GAMMA
+GAMMA_SHADOW_LARGE = 0.92     # stronger lift when most of the frame is dark
+GAMMA_HIGHLIGHT = 0.55        # already-bright areas are lifted less than 0.70
+
 # --- 3. Edge-preserving refine ----------------------------------------------
 REFINE_RADIUS = 4
 REFINE_EPS = 0.006

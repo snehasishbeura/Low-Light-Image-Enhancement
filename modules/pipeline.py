@@ -4,7 +4,7 @@ Low-light enhancement pipeline.
 Stages, in order:
 
 1. Illumination recovery (LIME max-RGB map + guided-filter smoothing)
-2. Adaptive tone (crushed-exposure lift, or a mild midtone anchor)
+2. Adaptive tone. Mixed frames use a paired shadow/highlight gamma instead
 3. Partial gray-world balance
 4. Edge-preserving detail refine
 5. Midtone saturation restore
@@ -24,7 +24,7 @@ from modules.illumination import (
     refine_illumination,
 )
 from modules.refine import refine_details
-from modules.tone import apply_adaptive_tone, gray_world
+from modules.tone import apply_adaptive_tone, gray_world, is_crushed, is_mixed_light, paired_gamma_map
 
 # Names used by the ablation tables. Order matches ``run_stages``.
 STAGE_NAMES = [
@@ -42,8 +42,8 @@ STAGE_TECHNIQUES = {
         f"guided radius={config.ILLUM_RADIUS}"
     ),
     "After Adaptive Tone": (
-        "Crushed-exposure lift or tone gamma "
-        f"{config.TONE_GAMMA} plus partial gray-world"
+        "Global tone, or paired shadow/highlight gamma on mixed light, "
+        "plus partial gray-world"
     ),
     "After Detail Refine": (
         "Guided-filter denoise with edge detail restored"
@@ -81,9 +81,19 @@ def run_stages(image):
     original = image
     linear = image.astype(np.float32) / 255.0
 
-    illumination = refine_illumination(initial_illumination(linear))
-    recovered = recover_reflectance(linear, illumination)
-    toned, crushed = apply_adaptive_tone(recovered, initial_illumination(linear))
+    raw_illumination = initial_illumination(linear)
+    illumination = refine_illumination(raw_illumination)
+    # One gamma for a uniformly dark frame. A shadow gamma and a highlight
+    # gamma only when this frame itself is mixed. The global 0.82 is skipped
+    # on that path because it lifts the bright regions again.
+    if is_crushed(raw_illumination) or not is_mixed_light(illumination):
+        recovered = recover_reflectance(linear, illumination)
+        toned, crushed = apply_adaptive_tone(recovered, raw_illumination)
+    else:
+        gamma_map = paired_gamma_map(illumination)
+        recovered = recover_reflectance(linear, illumination, gamma_map)
+        toned = recovered
+        crushed = False
     balanced = gray_world(toned, config.GRAY_WORLD)
     refined = refine_details(balanced, crushed)
     final = restore_color(_to_uint8(refined))
