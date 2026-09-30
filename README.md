@@ -52,6 +52,7 @@ Same pairs as before. Higher PSNR is closer in pixel value. Higher SSIM is close
 | LOL eval15 | 15 | 14.49 dB | 0.7684 | **20.14 dB** | **0.8005** |
 | LOL-v2 Real test | 100 | 18.52 dB | 0.8089 | **18.56 dB** | 0.7571 |
 | LOL-v2 Synthetic test | 100 | — | — | **19.77 dB** | **0.8288** |
+| UnLOL test | 43 | — | — | **13.00 dB** | **0.6067** |
 
 LOL is the set that looked dark and patchy. Mean PSNR there rises by about 5.7 dB, and the frames that used to fail move with it: `23.png` from 8.59 dB to 16.82 dB, `111.png` from 11.33 dB to 20.69 dB, `55.png` from 8.75 dB to 15.78 dB.
 
@@ -64,8 +65,9 @@ Comparisons (low-light | enhanced | ground truth):
 - LOL: `results/LOL/comparisons/`
 - LOL-v2 Real, three highest-PSNR frames: `results/LOLv2_Real/comparisons/`
 - LOL-v2 Synthetic, best, median, and lowest PSNR: `results/LOLv2_Synthetic/comparisons/`
+- UnLOL test, best, median, and lowest PSNR: `results/UnLOL/comparisons/`
 
-Per-image scores: `results/LOL/metrics.csv`, `results/LOLv2_Real/metrics.csv`, and `results/LOLv2_Synthetic/metrics.csv`.
+Per-image scores: `results/LOL/metrics.csv`, `results/LOLv2_Real/metrics.csv`, `results/LOLv2_Synthetic/metrics.csv`, and `results/UnLOL/metrics.csv`.
 
 ## Stage screenshots
 
@@ -111,6 +113,29 @@ datasets/LOLv2/Synthetic/
 
 `Low` is the dark input. `Normal` is the ground truth. Both folders use the same filename, for example `r00816405t.png`. `python evaluate_lol.py --dataset lolv2syn` scores the Test split. Train is there for inspection; the enhancer does not train on it and never reads `Normal` while enhancing.
 
+## UnLOL
+
+The mentor-provided UnLOL set in this repository is the **test** split only. Train and validation were not included in the upload.
+
+```text
+datasets/UnLOL/
+├── ts_caption.txt          scene captions, not used for scoring
+└── Test/
+    ├── Low/                43 low-light JPEGs, 1280×1280
+    └── High/               43 normal-light references, same filenames
+```
+
+`Low/0103.jpeg` pairs with `High/0103.jpeg`. `High` is the ground truth for PSNR and SSIM. `ts_caption.txt` has five text descriptions (`#0` through `#4`) for 32 of the 43 scenes. Those captions describe what is in the photo. They are not reference images, and the enhancer does not read them.
+
+UnLOL is used to benchmark the existing classical pipeline. It is not used to train a model or to retune `config.py`. The images are real indoor and outdoor scenes, stored as square JPEGs, which is different from LOL eval15 (600×400 PNG) and from LOL-v2 Synthetic (smaller rendered PNGs with matching `Low`/`Normal` names).
+
+On these 43 pairs the current pipeline scores **13.00 dB** PSNR and **0.6067** SSIM. The best frame is `1805.jpeg` (18.20 dB) and the weakest is `1709.jpeg` (9.21 dB). Illumination recovery does most of the lift (raw inputs average 10.36 dB). Those numbers are lower than LOL and LOL-v2 because the scenes, resolution, and JPEG capture are different. The enhancer parameters were left as they were.
+
+```bash
+python evaluate_lol.py --dataset unlol
+python make_comparisons_v2.py --dataset unlol
+```
+
 ## Scoring against ground truth
 
 LOL eval15 and LOL-v2 Real are not bundled. Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light) if you want those scores. `config.py` checks, in order:
@@ -126,9 +151,11 @@ LOL-v2 Real pairs `low00690.png` with `normal00690.png`. LOL and LOL-v2 Syntheti
 python evaluate_lol.py --dataset lol
 python evaluate_lol.py --dataset lolv2
 python evaluate_lol.py --dataset lolv2syn
+python evaluate_lol.py --dataset unlol
 python make_comparisons.py
 python make_comparisons_v2.py
 python make_comparisons_v2.py --dataset lolv2syn
+python make_comparisons_v2.py --dataset unlol
 python generate_final_report.py
 ```
 
@@ -137,8 +164,9 @@ python generate_final_report.py
 ```text
 config.py                 parameters and dataset paths
 datasets/LOLv2/Synthetic  Kaggle LOL-v2 Synthetic pairs
+datasets/UnLOL            UnLOL test pairs and scene captions
 main.py                   enhance images in input/
-evaluate_lol.py           PSNR, SSIM, ablation on LOL or LOL-v2
+evaluate_lol.py           PSNR, SSIM, ablation on LOL, LOL-v2, or UnLOL
 make_comparisons.py       LOL side-by-side figures
 make_comparisons_v2.py    LOL-v2 figures for the top PSNR frames
 modules/pipeline.py       stage order

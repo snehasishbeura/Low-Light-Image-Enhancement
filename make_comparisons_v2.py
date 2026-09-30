@@ -8,6 +8,8 @@ Reads a LOL-v2 metrics.csv and saves 3-panel figures:
   python make_comparisons_v2.py              # LOL-v2 Real, top 3 by PSNR
   python make_comparisons_v2.py --dataset lolv2syn
                                              # Synthetic: best, median, worst
+  python make_comparisons_v2.py --dataset unlol
+                                             # UnLOL test: best, median, worst
 """
 
 import os
@@ -37,6 +39,18 @@ def dataset_paths(dataset):
             "high": config.LOLV2_SYN_HIGH,
             "pairing": "exact",
             "eval_flag": "lolv2syn",
+        }
+    if dataset == "unlol":
+        root = os.path.join("results", "UnLOL")
+        return {
+            "name": "UnLOL",
+            "metrics": os.path.join(root, "metrics.csv"),
+            "enhanced": os.path.join(root, "enhanced"),
+            "comparisons": os.path.join(root, "comparisons"),
+            "low": config.UNLOL_LOW,
+            "high": config.UNLOL_HIGH,
+            "pairing": "exact",
+            "eval_flag": "unlol",
         }
     root = os.path.join("results", "LOLv2_Real")
     return {
@@ -165,7 +179,7 @@ def make_comparison(paths, rank_label, filename, psnr, ssim):
 
 def select_rows(all_results, dataset):
     """Real keeps the historical top-3. Synthetic also shows a middle and a weak frame."""
-    if dataset != "lolv2syn":
+    if dataset not in ("lolv2syn", "unlol"):
         return [(f"Rank #{i} by PSNR", row) for i, row in enumerate(all_results[:TOP_N], 1)]
 
     best = all_results[0]
@@ -188,12 +202,12 @@ def select_rows(all_results, dataset):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Side-by-side LOL-v2 comparisons.")
+    parser = argparse.ArgumentParser(description="Side-by-side comparisons for LOL-v2 and UnLOL.")
     parser.add_argument(
         "--dataset",
-        choices=["lolv2", "lolv2syn"],
+        choices=["lolv2", "lolv2syn", "unlol"],
         default="lolv2",
-        help="lolv2 = Real test, lolv2syn = Synthetic test.",
+        help="lolv2 = Real test, lolv2syn = Synthetic test, unlol = UnLOL test.",
     )
     args = parser.parse_args()
     paths = dataset_paths(args.dataset)

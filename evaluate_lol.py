@@ -8,10 +8,11 @@ Usage
   python evaluate_lol.py --dataset lol        # LOL eval15        (15 images)
   python evaluate_lol.py --dataset lolv2      # LOL-v2 Real       (100 images)
   python evaluate_lol.py --dataset lolv2syn   # LOL-v2 Synthetic  (100 images)
+  python evaluate_lol.py --dataset unlol      # UnLOL test        (paired JPEGs)
 
 Outputs (per dataset)
 ---------------------
-  results/LOL/            or   results/LOLv2_Real/
+  results/LOL/            or   results/LOLv2_Real/   or   results/UnLOL/
     enhanced/                    - every enhanced image
     metrics.csv                  - per-image PSNR and SSIM
     summary.txt                  - final averaged metrics
@@ -72,9 +73,17 @@ def get_dataset_config(dataset):
             "results_dir": os.path.join("results", "LOLv2_Synthetic"),
             "pairing"    : "exact",        # same filename in Low/ and Normal/
         }
+    elif dataset == "unlol":
+        return {
+            "name"       : "UnLOL",
+            "low_dir"    : config.UNLOL_LOW,
+            "high_dir"   : config.UNLOL_HIGH,
+            "results_dir": os.path.join("results", "UnLOL"),
+            "pairing"    : "exact",        # 0103.jpeg in Low/ and High/
+        }
     else:
         raise ValueError(
-            f"Unknown dataset: {dataset}. Use 'lol', 'lolv2', or 'lolv2syn'."
+            f"Unknown dataset: {dataset}. Use 'lol', 'lolv2', 'lolv2syn', or 'unlol'."
         )
 
 
@@ -431,13 +440,13 @@ def main(dataset):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Evaluate enhancement pipeline on LOL or LOL-v2 Real dataset."
+        description="Evaluate enhancement pipeline on LOL, LOL-v2, or UnLOL."
     )
     parser.add_argument(
         "--dataset",
-        choices=["lol", "lolv2", "lolv2syn"],
+        choices=["lol", "lolv2", "lolv2syn", "unlol"],
         default="lol",
-        help="Dataset: 'lol' (eval15), 'lolv2' (Real test), or 'lolv2syn' (Synthetic test)."
+        help="Dataset: 'lol' (eval15), 'lolv2' (Real test), 'lolv2syn' (Synthetic test), or 'unlol' (UnLOL test)."
     )
     args = parser.parse_args()
     main(args.dataset)

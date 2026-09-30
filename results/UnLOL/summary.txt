@@ -1,0 +1,18 @@
+========================================
+UNLOL DATASET EVALUATION
+========================================
+
+Dataset: UnLOL
+Test Images: 43
+
+Average PSNR : 13.00 dB
+Average SSIM : 0.6067
+
+Minimum PSNR : 9.21 dB
+Maximum PSNR : 18.20 dB
+
+Minimum SSIM : 0.2486
+Maximum SSIM : 0.8051
+
+Successfully processed: 43/43
+========================================

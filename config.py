@@ -52,6 +52,20 @@ LOLV2_SYN_HIGH = _first_existing(
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Synthetic\Test\Normal",
 )
 
+# UnLOL test split. Low/ is the dark input, High/ is the normal-light reference.
+# Filenames match exactly (0103.jpeg). Captions in ts_caption.txt are scene
+# descriptions and are not read by the enhancer or by PSNR/SSIM.
+UNLOL_LOW = _first_existing(
+    os.path.join(ROOT, "datasets", "UnLOL", "Test", "Low"),
+    os.path.join(ROOT, "data", "UnLOL", "Test", "Low"),
+    os.path.join(ROOT, "data", "UnLOL", "test", "Low"),
+)
+UNLOL_HIGH = _first_existing(
+    os.path.join(ROOT, "datasets", "UnLOL", "Test", "High"),
+    os.path.join(ROOT, "data", "UnLOL", "Test", "High"),
+    os.path.join(ROOT, "data", "UnLOL", "test", "High"),
+)
+
 OUTPUT_FOLDER = "output"
 
 # --- 1. Illumination (LIME) -------------------------------------------------
