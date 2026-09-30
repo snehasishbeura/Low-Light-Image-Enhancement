@@ -5,13 +5,13 @@ LOL-V2 SYNTHETIC DATASET EVALUATION
 Dataset: LOL-v2 Synthetic
 Test Images: 100
 
-Average PSNR : 19.88 dB
-Average SSIM : 0.8282
+Average PSNR : 19.80 dB
+Average SSIM : 0.8025
 
 Minimum PSNR : 10.19 dB
 Maximum PSNR : 31.08 dB
 
-Minimum SSIM : 0.5794
+Minimum SSIM : 0.5207
 Maximum SSIM : 0.9512
 
 Successfully processed: 100/100

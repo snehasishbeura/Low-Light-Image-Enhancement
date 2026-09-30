@@ -23,7 +23,8 @@ STAGE_FILES = [
     "1_illumination.jpg",
     "2_adaptive_tone.jpg",
     "3_detail_refine.jpg",
-    "4_final.jpg",
+    "4_color_restore.jpg",
+    "5_final.jpg",
 ]
 
 
@@ -72,7 +73,7 @@ def main():
         print(f"\n{name}")
         for stage_name, path in written:
             print(f"  {stage_name:<24} {path}")
-    print("\nFinal image is 4_final.jpg")
+    print("\nFinal image is 5_final.jpg")
     return 0
 
 

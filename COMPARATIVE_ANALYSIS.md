@@ -6,9 +6,10 @@
 |---|---|---|---|---|---|---|---|
 | Raw Low-Light | No enhancement (baseline) | 7.7733 | 0.1898 | 9.7182 | 0.2067 | +1.9449 | +0.0169 |
 | After Illumination | LIME illumination, gamma=0.7, guided radius=32 | 16.6943 | 0.6549 | 18.1694 | 0.6391 | +1.4751 | -0.0158 |
-| After Adaptive Tone | Crushed-exposure lift or tone gamma 0.82 plus partial gray-world | 18.8663 | 0.6361 | 17.3271 | 0.6037 | -1.5392 | -0.0324 |
-| After Detail Refine | Guided-filter denoise with edge detail restored | 20.1779 | 0.8011 | 18.6612 | 0.7582 | -1.5167 | -0.0429 |
-| After Color Restore | Midtone saturation x1.04 | 20.1431 | 0.8005 | 18.5642 | 0.7571 | -1.5789 | -0.0434 |
+| After Adaptive Tone | Global tone, or paired shadow/highlight gamma on mixed light, plus partial gray-world | 18.8836 | 0.6353 | 17.2867 | 0.6026 | -1.5969 | -0.0327 |
+| After Detail Refine | Guided-filter denoise with edge detail restored | 20.3885 | 0.8175 | 18.7311 | 0.7798 | -1.6574 | -0.0377 |
+| After Color Restore | Midtone saturation x1.04 | 20.3469 | 0.8170 | 18.6329 | 0.7787 | -1.7140 | -0.0383 |
+| After Grain Suppress | Non-local means on dark frames, strength from the illumination mean | 20.1770 | 0.8204 | 18.6085 | 0.7903 | -1.5685 | -0.0301 |
 
 ---
 
@@ -26,19 +27,21 @@ are lifted more than regions that are already bright. A second tone step adds
 extra gain only when the capture is uniformly crushed, and a small capped
 gain when a frame is still short of a normal midtone. Denoising is a guided
 filter that puts strong edges back, instead of the wide bilateral blur.
-CLAHE tiles are no longer used.
+A last non-local smooth then removes the grain that the lift amplified,
+and only on frames whose illumination is still dark. CLAHE tiles are
+no longer used.
 
-On LOL eval15 the final mean is 20.14 dB
-PSNR and 0.8005 SSIM. Illumination alone reaches
+On LOL eval15 the final mean is 20.18 dB
+PSNR and 0.8204 SSIM. Illumination alone reaches
 16.69 dB. Detail refinement is what restores
-structure: SSIM moves to 0.8011.
+structure: SSIM moves to 0.8175.
 
-On LOL-v2 Real the final mean is 18.56 dB
-PSNR and 0.7571 SSIM. PSNR is slightly above the
+On LOL-v2 Real the final mean is 18.61 dB
+PSNR and 0.7903 SSIM. PSNR is slightly above the
 old 18.52 dB. SSIM is lower than the old 0.8089 because the old number was
 helped by heavy blur; the new outputs keep texture that the bilateral filter
 had removed. The detail-refine stage is still the SSIM jump on this set
-(0.7582).
+(0.7798).
 
 Ground truth is used only after enhancement, to compute PSNR and SSIM.
 No stage reads the normal-light image.

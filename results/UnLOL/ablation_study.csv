@@ -4,3 +4,4 @@ After Illumination,"LIME illumination, gamma=0.7, guided radius=32",13.3966,0.61
 After Adaptive Tone,"Global tone, or paired shadow/highlight gamma on mixed light, plus partial gray-world",13.5003,0.6146,0.1037
 After Detail Refine,Guided-filter denoise with edge detail restored,13.5687,0.6145,0.0685
 After Color Restore,Midtone saturation x1.04,13.537,0.6137,-0.0317
+After Grain Suppress,"Non-local means on dark frames, strength from the illumination mean",13.5328,0.6126,-0.0042

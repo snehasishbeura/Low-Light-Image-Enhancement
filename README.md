@@ -13,7 +13,7 @@ A low-light photo is not just a darker copy of a normal one.
 
 ## How this method addresses it
 
-The method is built from LIME (Guo, Li, Ling), adaptive tone and gray-world colour in the AGCWD family (Huang, Cheng, Chiu), and an edge-aware guided filter. Parameters live in `config.py`.
+The method is built from LIME (Guo, Li, Ling), adaptive tone and gray-world colour in the AGCWD family (Huang, Cheng, Chiu), an edge-aware guided filter, and a non-local means denoise (Buades, Coll, Morel) on frames the lift has made noisy. Parameters live in `config.py`.
 
 ```text
 Low-light input
@@ -32,6 +32,8 @@ Adaptive tone             extra gain only if the frame is uniformly crushed
 Detail refine             guided filter, strong edges added back
       ▼
 Colour restore            a little saturation on midtones only
+      ▼
+Grain suppress            non-local means, only when the frame is dark
       │
       ▼
 Enhanced image
@@ -43,6 +45,7 @@ Enhanced image
    When the illumination map itself shows a bright tail, a dark mass, and a mean above 0.30, the frame is treated as mixed light. Those frames do not use one exponent. Shadows keep gamma 0.70, or 0.92 when more than half the map is dark, and already-bright areas use gamma 0.55. The extra global 0.82 is not applied on top. A dark scene, including every LOL eval15 frame, never takes this branch.
 3. **Detail refine.** A second guided filter suppresses the grain that the lift amplified. Strong edges are added back, so book titles, fabric, and faces stay sharper than a wide blur would leave them. A uniformly crushed frame is the exception: the gain has already amplified the grain above the real edges, so that frame keeps the smoothed base and does not add the grain back.
 4. **Colour restore.** Saturation is raised by 4% on midtones only, so shadows are not pushed into false colour and highlights are not oversaturated.
+5. **Grain suppress.** Dividing by a small illumination map amplifies sensor noise, which is the grain on LOL and LOL-v2 Real. A non-local means filter removes that grain. Its strength follows the mean illumination: a dark frame is smoothed, and a frame whose mean illumination is already above 0.18 is left unchanged, so a partly lit scene does not get blurred. This is the same reason LIME denoises after the division. The filter never reads the ground truth.
 
 ## Results
 
@@ -50,14 +53,14 @@ Higher PSNR is closer in pixel value. Higher SSIM is closer in structure. Scores
 
 | Dataset | Images | PSNR | SSIM |
 |---|---:|---:|---:|
-| LOL eval15 | 15 | **20.35 dB** | **0.8170** |
-| LOL-v2 Real test | 100 | **18.63 dB** | **0.7787** |
-| LOL-v2 Synthetic test | 100 | **19.88 dB** | **0.8282** |
-| UnLOL test | 43 | **13.54 dB** | **0.6137** |
+| LOL eval15 | 15 | **20.18 dB** | **0.8204** |
+| LOL-v2 Real test | 100 | **18.61 dB** | **0.7903** |
+| LOL-v2 Synthetic test | 100 | **19.80 dB** | **0.8025** |
+| UnLOL test | 43 | **13.53 dB** | **0.6126** |
 
-On LOL eval15 the mean is 20.35 dB / 0.8170, from 16.75 dB on the weakest frame to 26.49 dB on the strongest. The three uniformly crushed frames are the ones that moved: `23.png` 16.82 dB to 18.08 dB, `55.png` 15.78 dB to 16.75 dB, and `665.png` 18.23 dB to 19.06 dB, with SSIM rising by about 0.07 to 0.10 because the amplified grain is no longer kept. The other twelve frames are unchanged. LOL-v2 Real finishes at 18.63 dB / 0.7787 across 100 captured pairs. The synthetic test finishes at 19.88 dB / 0.8282. Illumination recovery does most of that work: the raw synthetic inputs sit at 11.22 dB / 0.4450, and the illumination stage alone reaches 20.23 dB / 0.8948. The best synthetic frame is `r191488c6t.png` at 31.08 dB. The weakest, `r01058910t.png` at 10.19 dB, stays soft because the darkness there is not a simple illumination scale.
+On LOL eval15 the mean is 20.18 dB / 0.8204, from 16.69 dB on the weakest frame to 25.69 dB on the strongest. The grain suppress is what moves the flat regions: `23.png` SSIM 0.719 to 0.774, `55.png` 0.745 to 0.803, and `780.png` 0.808 to 0.853, with the speckle on walls and floors removed. A few textured frames give a little of that structure back in the score, notably `778.png`. LOL-v2 Real finishes at 18.61 dB / 0.7903 across 100 captured pairs. SSIM there rises because the same grain is gone. The synthetic test finishes at 19.80 dB / 0.8025. Its darker frames take the same smooth, so some fine texture that was not grain is softened and SSIM is lower than before that step. Illumination recovery still does most of the synthetic work: the raw inputs sit at 11.22 dB / 0.4450, and the illumination stage alone reaches 20.09 dB / 0.8902. The best synthetic frame is `r191488c6t.png` at 31.08 dB. The weakest, `r01058910t.png` at 10.19 dB, stays soft because the darkness there is not a simple illumination scale.
 
-UnLOL is a separate real-scene JPEG test (1280×1280). On its 43 pairs the method scores 13.54 dB / 0.6137. Twelve of those frames are mixed and partly lit, so they take the paired gamma. None of the 43 scores went down. The larger gains are `0502.jpeg` (+3.08 dB), `0604.jpeg` (+2.80 dB), `0703.jpeg` (+2.57 dB), `0103.jpeg` (+2.32 dB), and `1709.jpeg` (+1.85 dB). The best frame is still `1805.jpeg` (18.20 dB) and the weakest is `2903.jpeg` (9.49 dB). Both stay on the single-gamma path because the frame is dark overall. Raw inputs average 10.36 dB.
+UnLOL is a separate real-scene JPEG test (1280×1280). On its 43 pairs the method scores 13.53 dB / 0.6126. Twelve of those frames are mixed and partly lit, so they take the paired gamma. The larger gains from that path are `0502.jpeg` (+3.08 dB), `0604.jpeg` (+2.80 dB), `0703.jpeg` (+2.57 dB), `0103.jpeg` (+2.32 dB), and `1709.jpeg` (+1.85 dB). The grain step touches only the darker UnLOL frames, and those moves are a few hundredths of a decibel. The best frame is still `1805.jpeg` (18.20 dB) and the weakest is `2903.jpeg` (9.49 dB). Both stay on the single-gamma path because the frame is dark overall. Raw inputs average 10.36 dB.
 
 Comparisons (low-light | enhanced | ground truth):
 

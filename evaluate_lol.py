@@ -141,13 +141,18 @@ def save_ablation_plot(ablation_data, save_path):
     psnr_vals = [ablation_data[s][0] for s in stages]
     ssim_vals = [ablation_data[s][1] for s in stages]
 
-    x_labels = [
-        "Baseline\n(Raw)", "+Illumination\n(LIME)",
-        "+Adaptive\nTone", "+Detail\nRefine", "+Color\nRestore",
-    ]
+    short_labels = {
+        "Raw Low-Light": "Baseline\n(Raw)",
+        "After Illumination": "+Illumination\n(LIME)",
+        "After Adaptive Tone": "+Adaptive\nTone",
+        "After Detail Refine": "+Detail\nRefine",
+        "After Color Restore": "+Color\nRestore",
+        "After Grain Suppress": "+Grain\nSuppress",
+    }
+    x_labels = [short_labels.get(stage, stage) for stage in stages]
     x = np.arange(len(stages))
 
-    fig, ax1 = plt.subplots(figsize=(12, 6))
+    fig, ax1 = plt.subplots(figsize=(13, 6))
     fig.patch.set_facecolor("#f9f9f9")
     ax1.set_facecolor("#f9f9f9")
 

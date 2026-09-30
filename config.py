@@ -122,5 +122,13 @@ CRUSH_REFINE_EPS = 0.04
 CRUSH_DETAIL_KEEP = 0.0
 CRUSH_DETAIL_TAU = 0.10
 
+# Non-local grain suppress after the lift. Dividing by a small illumination
+# amplifies sensor noise (Guo, Li, Ling, LIME, TIP 2017, who denoise that
+# result; Buades, Coll, Morel, CVPR 2005, non-local means). Strength follows
+# the mean illumination: a dark frame is denoised, a frame that is already
+# partly lit is left alone.
+GRAIN_T_MEAN = 0.18
+GRAIN_H = 12.0
+
 # --- 4. Colour --------------------------------------------------------------
 SATURATION = 1.04
