@@ -1,26 +1,19 @@
 # Low-Light Image Enhancement
 
-A classical pipeline that lifts a low-light photo toward the brightness, local contrast, and sharpness of a normal exposure.
+A classical enhancement method that lifts a low-light photo toward the brightness, local contrast, and sharpness of a normal exposure. It does not train a network. Every stage looks only at the low-light input. Ground truth is used afterwards, in `evaluate_lol.py`, to measure PSNR and SSIM.
 
-It is built from the methods in the project papers:
+## The problem
 
-- **LIME** (Guo, Li, Ling) — per-pixel illumination from the max RGB channel, smoothed so the map follows edges
-- **Adaptive gamma / gray-world colour** (Huang, Cheng, Chiu, AGCWD family) — the lift depends on how crushed the capture is, instead of one gamma for every photo
-- **Edge-aware smoothing** — a guided filter keeps strong edges and drops fine grain
+A low-light photo is not just a darker copy of a normal one.
 
-Ground truth is never used inside the enhancer. It is only used afterwards, in `evaluate_lol.py`, to compute PSNR and SSIM.
+- **Uneven darkness.** A corner, a face, or the far side of a room can sit near black while another part of the frame still has light. One brightness curve for the whole image leaves those regions dark.
+- **Crushed exposure.** Some captures have almost no highlight left in the file. A mild lift never reaches a usable brightness.
+- **Noise against detail.** The signal that is still there — text, fabric, edges — is buried in sensor noise. Smoothing the whole frame to hide that grain also wipes out the detail.
+- **Dull colour.** Shadow regions lose saturation, so the brightened image looks gray even after the luminance is fixed.
 
-## What was going wrong
+## How this method addresses it
 
-The previous stack was a fixed gamma (1.8), CLAHE on 8×8 tiles, a wide bilateral filter (`d=9`, `σ=75`), and a small saturation boost.
-
-That produced three visible failures:
-
-- **Dark patches.** One gamma lifts the whole frame by the same curve, so a corner that is darker than the rest stays dark. CLAHE tiles then made those regions blotchy.
-- **Low brightness.** Very dark captures (no highlight left in the file) were still far below the normal-light photo.
-- **Blur.** The bilateral kernel removed the texture that is still visible in the ground truth: book titles, fabric, faces.
-
-## Pipeline
+The method is built from LIME (Guo, Li, Ling), adaptive tone and gray-world colour in the AGCWD family (Huang, Cheng, Chiu), and an edge-aware guided filter. Parameters live in `config.py`.
 
 ```text
 Low-light input
@@ -41,24 +34,25 @@ Colour restore            a little saturation on midtones only
 Enhanced image
 ```
 
-Parameters live in `config.py`.
+1. **Illumination map.** Per-pixel lighting is the maximum of R, G, and B. A guided filter smooths that map so it follows edges instead of texture. Dividing the image by the map raised to 0.7 brightens dark regions more than regions that are already lit. That is what removes patchy darkness without painting one gamma over the whole frame.
+2. **Adaptive tone.** If the frame is uniformly crushed (very low mean, no bright anchor), a stronger soft gain lifts it. Otherwise a mild gamma (0.82) is enough, and a capped midtone anchor adds at most 10% when the recovery is still dim and the highlights are not already near white. A partial gray-world step (strength 0.10) pulls a colour cast back without forcing a gray scene.
+3. **Detail refine.** A second guided filter suppresses the grain that the lift amplified. Strong edges are added back, so book titles, fabric, and faces stay sharper than a wide blur would leave them. Crushed frames, which amplify more noise, use a slightly stronger smooth.
+4. **Colour restore.** Saturation is raised by 4% on midtones only, so shadows are not pushed into false colour and highlights are not oversaturated.
 
-## Results on the paired test sets
+## Results
 
-Same pairs as before. Higher PSNR is closer in pixel value. Higher SSIM is closer in structure.
+Higher PSNR is closer in pixel value. Higher SSIM is closer in structure. Scores below are this method on the paired test images.
 
-| Dataset | Images | Previous PSNR | Previous SSIM | This pipeline PSNR | This pipeline SSIM |
-|---|---:|---:|---:|---:|---:|
-| LOL eval15 | 15 | 14.49 dB | 0.7684 | **20.14 dB** | **0.8005** |
-| LOL-v2 Real test | 100 | 18.52 dB | 0.8089 | **18.56 dB** | 0.7571 |
-| LOL-v2 Synthetic test | 100 | — | — | **19.77 dB** | **0.8288** |
-| UnLOL test | 43 | — | — | **13.00 dB** | **0.6067** |
+| Dataset | Images | PSNR | SSIM |
+|---|---:|---:|---:|
+| LOL eval15 | 15 | **20.14 dB** | **0.8005** |
+| LOL-v2 Real test | 100 | **18.56 dB** | **0.7571** |
+| LOL-v2 Synthetic test | 100 | **19.77 dB** | **0.8288** |
+| UnLOL test | 43 | **13.00 dB** | **0.6067** |
 
-LOL is the set that looked dark and patchy. Mean PSNR there rises by about 5.7 dB, and the frames that used to fail move with it: `23.png` from 8.59 dB to 16.82 dB, `111.png` from 11.33 dB to 20.69 dB, `55.png` from 8.75 dB to 15.78 dB.
+On LOL eval15 the mean is 20.14 dB, from 15.78 dB on the weakest frame to 26.49 dB on the strongest. LOL-v2 Real finishes at 18.56 dB / 0.7571 across 100 captured pairs. The synthetic test finishes at 19.77 dB / 0.8288. Illumination recovery does most of that work: the raw synthetic inputs sit at 11.22 dB / 0.4450, and the illumination stage alone reaches 20.23 dB / 0.8948. The best synthetic frame is `r191488c6t.png` at 31.08 dB. The weakest, `r01058910t.png` at 10.19 dB, stays soft because the darkness there is not a simple illumination scale.
 
-LOL-v2 PSNR is slightly higher than before. SSIM is lower because the old bilateral filter was blurring the output toward the smoother ground truth. The new outputs keep more of the real texture. Side-by-side figures are in `results/`.
-
-The synthetic test was not part of the old gamma–CLAHE run, so there is no previous score for it. The raw synthetic inputs already sit at 11.22 dB / 0.4450 SSIM, higher than the real sets, because the darkness is generated rather than captured. Illumination recovery does most of the work (20.23 dB / 0.8948). The later denoise trims a little of that SSIM, because these ground truths are clean and sharp. The full test still finishes at 19.77 dB, with a best frame of 31.08 dB (`r191488c6t.png`) and a weakest of 10.19 dB (`r01058910t.png`), where the output stays soft and washed out.
+UnLOL is a separate real-scene JPEG test (1280×1280). On its 43 pairs the method scores 13.00 dB / 0.6067. Raw inputs average 10.36 dB, and the illumination stage supplies most of the gain. The best frame is `1805.jpeg` (18.20 dB) and the weakest is `1709.jpeg` (9.21 dB). Parameters were not retuned for UnLOL.
 
 Comparisons (low-light | enhanced | ground truth):
 
@@ -115,7 +109,7 @@ datasets/LOLv2/Synthetic/
 
 ## UnLOL
 
-The mentor-provided UnLOL set in this repository is the **test** split only. Train and validation were not included in the upload.
+The UnLOL set in this repository is the **test** split only. Train and validation were not included.
 
 ```text
 datasets/UnLOL/
@@ -127,10 +121,6 @@ datasets/UnLOL/
 
 `Low/0103.jpeg` pairs with `High/0103.jpeg`. `High` is the ground truth for PSNR and SSIM. `ts_caption.txt` has five text descriptions (`#0` through `#4`) for 32 of the 43 scenes. Those captions describe what is in the photo. They are not reference images, and the enhancer does not read them.
 
-UnLOL is used to benchmark the existing classical pipeline. It is not used to train a model or to retune `config.py`. The images are real indoor and outdoor scenes, stored as square JPEGs, which is different from LOL eval15 (600×400 PNG) and from LOL-v2 Synthetic (smaller rendered PNGs with matching `Low`/`Normal` names).
-
-On these 43 pairs the current pipeline scores **13.00 dB** PSNR and **0.6067** SSIM. The best frame is `1805.jpeg` (18.20 dB) and the weakest is `1709.jpeg` (9.21 dB). Illumination recovery does most of the lift (raw inputs average 10.36 dB). Those numbers are lower than LOL and LOL-v2 because the scenes, resolution, and JPEG capture are different. The enhancer parameters were left as they were.
-
 ```bash
 python evaluate_lol.py --dataset unlol
 python make_comparisons_v2.py --dataset unlol
@@ -141,11 +131,12 @@ python make_comparisons_v2.py --dataset unlol
 LOL eval15 and LOL-v2 Real are not bundled. Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light) if you want those scores. `config.py` checks, in order:
 
 - `datasets/LOLv2/Synthetic/Test/{Low,Normal}` for the synthetic test
+- `datasets/UnLOL/Test/{Low,High}` for UnLOL
 - `data/hf/LOLdataset/eval15/{low,high}` and `data/hf/lol-v2-real/Test/{Low,Normal}`
 - `data/LOLdataset/...`, `data/lol-v2-real/...`, and `data/lol-v2-synthetic/...`
 - the original Windows paths
 
-LOL-v2 Real pairs `low00690.png` with `normal00690.png`. LOL and LOL-v2 Synthetic use the same filename in both folders.
+LOL-v2 Real pairs `low00690.png` with `normal00690.png`. LOL, LOL-v2 Synthetic, and UnLOL use the same filename in both folders.
 
 ```bash
 python evaluate_lol.py --dataset lol
@@ -168,7 +159,7 @@ datasets/UnLOL            UnLOL test pairs and scene captions
 main.py                   enhance images in input/
 evaluate_lol.py           PSNR, SSIM, ablation on LOL, LOL-v2, or UnLOL
 make_comparisons.py       LOL side-by-side figures
-make_comparisons_v2.py    LOL-v2 figures for the top PSNR frames
+make_comparisons_v2.py    LOL-v2 and UnLOL comparison figures
 modules/pipeline.py       stage order
 modules/illumination.py   LIME map and division
 modules/tone.py           crushed-exposure lift and midtone anchor
@@ -179,7 +170,7 @@ modules/evaluation.py     PSNR and SSIM
 
 ## Limits
 
-A single classical pipeline cannot know whether a scene is supposed to be a bright room or a dark street. Frames whose ground truth is deliberately dim (some night shots in LOL) can come out a little brighter than that photo. Very crushed frames still show some of the sensor noise that was hiding in the blacks; the refine stage suppresses that grain.
+The method estimates illumination from the input. It cannot know whether a scene is supposed to be a bright room or a dark street, so a frame whose reference is deliberately dim can come out a little brighter than that photo. Very crushed frames still show some of the sensor noise that was hiding in the blacks; the refine stage suppresses that grain.
 
 ## Author
 
