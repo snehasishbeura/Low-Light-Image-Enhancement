@@ -41,7 +41,7 @@ Enhanced image
 2. **Adaptive tone.** If the frame is uniformly crushed (very low mean, no bright anchor), a stronger soft gain lifts it. Otherwise a mild gamma (0.82) is enough, and a capped midtone anchor adds at most 10% when the recovery is still dim and the highlights are not already near white. A partial gray-world step (strength 0.10) pulls a colour cast back without forcing a gray scene.
 
    When the illumination map itself shows a bright tail, a dark mass, and a mean above 0.30, the frame is treated as mixed light. Those frames do not use one exponent. Shadows keep gamma 0.70, or 0.92 when more than half the map is dark, and already-bright areas use gamma 0.55. The extra global 0.82 is not applied on top. A dark scene, including every LOL eval15 frame, never takes this branch.
-3. **Detail refine.** A second guided filter suppresses the grain that the lift amplified. Strong edges are added back, so book titles, fabric, and faces stay sharper than a wide blur would leave them. Crushed frames, which amplify more noise, use a slightly stronger smooth.
+3. **Detail refine.** A second guided filter suppresses the grain that the lift amplified. Strong edges are added back, so book titles, fabric, and faces stay sharper than a wide blur would leave them. A uniformly crushed frame is the exception: the gain has already amplified the grain above the real edges, so that frame keeps the smoothed base and does not add the grain back.
 4. **Colour restore.** Saturation is raised by 4% on midtones only, so shadows are not pushed into false colour and highlights are not oversaturated.
 
 ## Results
@@ -50,12 +50,12 @@ Higher PSNR is closer in pixel value. Higher SSIM is closer in structure. Scores
 
 | Dataset | Images | PSNR | SSIM |
 |---|---:|---:|---:|
-| LOL eval15 | 15 | **20.14 dB** | **0.8005** |
-| LOL-v2 Real test | 100 | **18.56 dB** | **0.7571** |
+| LOL eval15 | 15 | **20.35 dB** | **0.8170** |
+| LOL-v2 Real test | 100 | **18.63 dB** | **0.7787** |
 | LOL-v2 Synthetic test | 100 | **19.88 dB** | **0.8282** |
 | UnLOL test | 43 | **13.54 dB** | **0.6137** |
 
-On LOL eval15 the mean is 20.14 dB, from 15.78 dB on the weakest frame to 26.49 dB on the strongest. LOL-v2 Real finishes at 18.56 dB / 0.7571 across 100 captured pairs. The synthetic test finishes at 19.88 dB / 0.8282. Illumination recovery does most of that work: the raw synthetic inputs sit at 11.22 dB / 0.4450, and the illumination stage alone reaches 20.23 dB / 0.8948. The best synthetic frame is `r191488c6t.png` at 31.08 dB. The weakest, `r01058910t.png` at 10.19 dB, stays soft because the darkness there is not a simple illumination scale.
+On LOL eval15 the mean is 20.35 dB / 0.8170, from 16.75 dB on the weakest frame to 26.49 dB on the strongest. The three uniformly crushed frames are the ones that moved: `23.png` 16.82 dB to 18.08 dB, `55.png` 15.78 dB to 16.75 dB, and `665.png` 18.23 dB to 19.06 dB, with SSIM rising by about 0.07 to 0.10 because the amplified grain is no longer kept. The other twelve frames are unchanged. LOL-v2 Real finishes at 18.63 dB / 0.7787 across 100 captured pairs. The synthetic test finishes at 19.88 dB / 0.8282. Illumination recovery does most of that work: the raw synthetic inputs sit at 11.22 dB / 0.4450, and the illumination stage alone reaches 20.23 dB / 0.8948. The best synthetic frame is `r191488c6t.png` at 31.08 dB. The weakest, `r01058910t.png` at 10.19 dB, stays soft because the darkness there is not a simple illumination scale.
 
 UnLOL is a separate real-scene JPEG test (1280×1280). On its 43 pairs the method scores 13.54 dB / 0.6137. Twelve of those frames are mixed and partly lit, so they take the paired gamma. None of the 43 scores went down. The larger gains are `0502.jpeg` (+3.08 dB), `0604.jpeg` (+2.80 dB), `0703.jpeg` (+2.57 dB), `0103.jpeg` (+2.32 dB), and `1709.jpeg` (+1.85 dB). The best frame is still `1805.jpeg` (18.20 dB) and the weakest is `2903.jpeg` (9.49 dB). Both stay on the single-gamma path because the frame is dark overall. Raw inputs average 10.36 dB.
 

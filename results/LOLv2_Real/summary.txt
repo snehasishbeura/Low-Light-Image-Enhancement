@@ -5,13 +5,13 @@ LOL-V2 REAL DATASET EVALUATION
 Dataset: LOL-v2 Real
 Test Images: 100
 
-Average PSNR : 18.56 dB
-Average SSIM : 0.7571
+Average PSNR : 18.63 dB
+Average SSIM : 0.7787
 
 Minimum PSNR : 12.87 dB
 Maximum PSNR : 24.57 dB
 
-Minimum SSIM : 0.4617
+Minimum SSIM : 0.6130
 Maximum SSIM : 0.9483
 
 Successfully processed: 100/100

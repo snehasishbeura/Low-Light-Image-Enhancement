@@ -79,7 +79,7 @@ TONE_GAMMA = 0.82          # additional gamma on ordinary (not crushed) images
 CRUSH_MEAN = 0.045         # max-channel mean below this can be a crushed frame
 CRUSH_P99 = 0.13           # and the 99th percentile is still dark
 CRUSH_RATIO = 4.0          # and there is no bright anchor relative to the median
-CRUSH_GAIN = 1.65
+CRUSH_GAIN = 1.70
 CRUSH_KNEE = 0.84
 # Midtone anchor: only when the input already has some light, the recovery is
 # still dim, and highlights are not already near white.
@@ -114,11 +114,13 @@ REFINE_RADIUS = 4
 REFINE_EPS = 0.006
 DETAIL_KEEP = 0.25
 DETAIL_TAU = 0.04
-# Stronger smooth after the crushed-exposure gain, which amplifies noise more.
-CRUSH_REFINE_RADIUS = 6
-CRUSH_REFINE_EPS = 0.012
-CRUSH_DETAIL_KEEP = 0.15
-CRUSH_DETAIL_TAU = 0.05
+# A crushed frame has already been amplified, so the grain is stronger than the
+# real edges. Keep the guided-filter base and do not add that grain back.
+# Li, Liu, Yang, Sun, Guo, TIP 2018: treat amplified noise separately from reflectance.
+CRUSH_REFINE_RADIUS = 12
+CRUSH_REFINE_EPS = 0.04
+CRUSH_DETAIL_KEEP = 0.0
+CRUSH_DETAIL_TAU = 0.10
 
 # --- 4. Colour --------------------------------------------------------------
 SATURATION = 1.04

@@ -3,7 +3,8 @@ Edge-preserving refine.
 
 Smooth with a guided filter, then add back only the detail whose amplitude
 is larger than a noise threshold. Edges stay. Fine grain does not.
-Crushed exposures, which were amplified the most, use a stronger smooth.
+A crushed exposure is smoothed more and its grain is not added back, because
+that grain was amplified above the level of real edges.
 """
 
 import numpy as np
