@@ -8,7 +8,6 @@ Stages, in order:
 3. Partial gray-world balance
 4. Edge-preserving detail refine
 5. Midtone saturation restore
-6. Non-local grain suppress on dark frames
 
 Ground-truth images are never read here. Every decision uses the low-light
 input only.
@@ -24,7 +23,7 @@ from modules.illumination import (
     recover_reflectance,
     refine_illumination,
 )
-from modules.refine import refine_details, suppress_amplified_grain
+from modules.refine import refine_details
 from modules.tone import apply_adaptive_tone, gray_world, is_crushed, is_mixed_light, paired_gamma_map
 
 # Names used by the ablation tables. Order matches ``run_stages``.
@@ -34,7 +33,6 @@ STAGE_NAMES = [
     "After Adaptive Tone",
     "After Detail Refine",
     "After Color Restore",
-    "After Grain Suppress",
 ]
 
 STAGE_TECHNIQUES = {
@@ -51,9 +49,6 @@ STAGE_TECHNIQUES = {
         "Guided-filter denoise with edge detail restored"
     ),
     "After Color Restore": f"Midtone saturation x{config.SATURATION}",
-    "After Grain Suppress": (
-        "Non-local means on dark frames, strength from the illumination mean"
-    ),
 }
 
 
@@ -101,15 +96,13 @@ def run_stages(image):
         crushed = False
     balanced = gray_world(toned, config.GRAY_WORLD)
     refined = refine_details(balanced, crushed)
-    colored = restore_color(_to_uint8(refined))
-    final = suppress_amplified_grain(colored, illumination)
+    final = restore_color(_to_uint8(refined))
 
     return [
         original,
         _to_uint8(recovered),
         _to_uint8(balanced),
         _to_uint8(refined),
-        colored,
         final,
     ]
 

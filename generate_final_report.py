@@ -42,13 +42,8 @@ def build_report(lol, v2):
 
     by_name_1 = {row["Stage"]: row for row in lol}
     by_name_2 = {row["Stage"]: row for row in v2}
-    final_key = (
-        "After Grain Suppress"
-        if "After Grain Suppress" in by_name_1
-        else "After Color Restore"
-    )
-    final_1 = by_name_1[final_key]
-    final_2 = by_name_2[final_key]
+    final_1 = by_name_1["After Color Restore"]
+    final_2 = by_name_2["After Color Restore"]
     illum_1 = by_name_1["After Illumination"]
     refine_1 = by_name_1["After Detail Refine"]
     refine_2 = by_name_2["After Detail Refine"]
@@ -71,9 +66,7 @@ def build_report(lol, v2):
         "extra gain only when the capture is uniformly crushed, and a small capped",
         "gain when a frame is still short of a normal midtone. Denoising is a guided",
         "filter that puts strong edges back, instead of the wide bilateral blur.",
-        "A last non-local smooth then removes the grain that the lift amplified,",
-        "and only on frames whose illumination is still dark. CLAHE tiles are",
-        "no longer used.",
+        "CLAHE tiles are no longer used.",
         "",
         f"On LOL eval15 the final mean is {float(final_1['Mean PSNR (dB)']):.2f} dB",
         f"PSNR and {float(final_1['Mean SSIM']):.4f} SSIM. Illumination alone reaches",
