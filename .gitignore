@@ -1,7 +1,6 @@
 # ---------------------------------------------------------------
-# Extra dataset downloads
-# LOL-v2 Synthetic ships in datasets/LOLv2/Synthetic.
-# LOL eval15 and LOL-v2 Real are still downloaded separately.
+# Extra dataset downloads. The reference splits ship under datasets/:
+# LOL eval15, LOL-v2 Real test, LOL-v2 Synthetic test, and UnLOL test.
 # ---------------------------------------------------------------
 LOLdataset/
 LOLdataset.zip

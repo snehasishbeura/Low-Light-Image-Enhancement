@@ -96,52 +96,33 @@ python main.py
 
 Stage images are written to `output/`.
 
-## LOL-v2 Synthetic
+## Datasets
 
-The Synthetic split from [LOLv1 & LOLv2 on Kaggle](https://www.kaggle.com/datasets/ohmahler91/lolv1-and-lolv2) is included in the project:
+The reference splits used for the scores above are included. Each one is a paired test set: the dark folder is the input, and the other folder is the normal-light reference. The enhancer never reads the reference.
 
 ```text
-datasets/LOLv2/Synthetic/
-├── Train/          900 pairs
+datasets/
+├── LOL/eval15/                  15 pairs
+│   ├── low/
+│   └── high/
+├── LOLv2/Real/Test/             100 captured pairs
 │   ├── Low/
 │   └── Normal/
-└── Test/           100 pairs
+├── LOLv2/Synthetic/Test/        100 synthetic pairs
+│   ├── Low/
+│   └── Normal/
+└── UnLOL/Test/                  43 pairs, 1280×1280 JPEG
     ├── Low/
-    └── Normal/
+    └── High/
 ```
 
-`Low` is the dark input. `Normal` is the ground truth. Both folders use the same filename, for example `r00816405t.png`. `python evaluate_lol.py --dataset lolv2syn` scores the Test split. Train is there for inspection; the enhancer does not train on it and never reads `Normal` while enhancing.
+LOL uses the same filename in `low/` and `high/`, for example `1.png`. LOL-v2 Real pairs `low00690.png` with `normal00690.png`. Synthetic and UnLOL use the same filename in both folders, for example `r00816405t.png` and `0103.jpeg`.
 
-## UnLOL
-
-The UnLOL set in this repository is the **test** split only. Train and validation were not included.
-
-```text
-datasets/UnLOL/
-├── ts_caption.txt          scene captions, not used for scoring
-└── Test/
-    ├── Low/                43 low-light JPEGs, 1280×1280
-    └── High/               43 normal-light references, same filenames
-```
-
-`Low/0103.jpeg` pairs with `High/0103.jpeg`. `High` is the ground truth for PSNR and SSIM. `ts_caption.txt` has five text descriptions (`#0` through `#4`) for 32 of the 43 scenes. Those captions describe what is in the photo. They are not reference images, and the enhancer does not read them.
-
-```bash
-python evaluate_lol.py --dataset unlol
-python make_comparisons_v2.py --dataset unlol
-```
+The synthetic images are the test split from [LOLv1 & LOLv2 on Kaggle](https://www.kaggle.com/datasets/ohmahler91/lolv1-and-lolv2). The 900-pair training split is not included. UnLOL here is the test split only.
 
 ## Scoring against ground truth
 
-LOL eval15 and LOL-v2 Real are not bundled. Download [LOL](https://daooshee.github.io/BMVC2018website/) and [LOL-v2 Real](https://github.com/flyywh/CVPR-2020-Semi-Low-Light) if you want those scores. `config.py` checks, in order:
-
-- `datasets/LOLv2/Synthetic/Test/{Low,Normal}` for the synthetic test
-- `datasets/UnLOL/Test/{Low,High}` for UnLOL
-- `data/hf/LOLdataset/eval15/{low,high}` and `data/hf/lol-v2-real/Test/{Low,Normal}`
-- `data/LOLdataset/...`, `data/lol-v2-real/...`, and `data/lol-v2-synthetic/...`
-- the original Windows paths
-
-LOL-v2 Real pairs `low00690.png` with `normal00690.png`. LOL, LOL-v2 Synthetic, and UnLOL use the same filename in both folders.
+`config.py` reads the bundled folders above first. If those are missing it falls back to `data/hf/...`, `data/...`, and the original Windows paths.
 
 ```bash
 python evaluate_lol.py --dataset lol
@@ -159,8 +140,10 @@ python generate_final_report.py
 
 ```text
 config.py                 parameters and dataset paths
-datasets/LOLv2/Synthetic  Kaggle LOL-v2 Synthetic pairs
-datasets/UnLOL            UnLOL test pairs and scene captions
+datasets/LOL              LOL eval15 pairs
+datasets/LOLv2/Real       LOL-v2 Real captured test pairs
+datasets/LOLv2/Synthetic  LOL-v2 Synthetic test pairs
+datasets/UnLOL            UnLOL test pairs
 main.py                   enhance images in input/
 evaluate_lol.py           PSNR, SSIM, ablation on LOL, LOL-v2, or UnLOL
 make_comparisons.py       LOL side-by-side figures

@@ -14,11 +14,13 @@ def _first_existing(*candidates):
 
 # LOL eval15 (15 pairs). Filename in low/ matches filename in high/.
 DATASET_LOW = _first_existing(
+    os.path.join(ROOT, "datasets", "LOL", "eval15", "low"),
     os.path.join(ROOT, "data", "hf", "LOLdataset", "eval15", "low"),
     os.path.join(ROOT, "data", "LOLdataset", "eval15", "low"),
     r"C:\Users\notsnehasis\Downloads\LOLdataset\eval15\low",
 )
 DATASET_HIGH = _first_existing(
+    os.path.join(ROOT, "datasets", "LOL", "eval15", "high"),
     os.path.join(ROOT, "data", "hf", "LOLdataset", "eval15", "high"),
     os.path.join(ROOT, "data", "LOLdataset", "eval15", "high"),
     r"C:\Users\notsnehasis\Downloads\LOLdataset\eval15\high",
@@ -26,19 +28,21 @@ DATASET_HIGH = _first_existing(
 
 # LOL-v2 Real captured test set. low00690.png pairs with normal00690.png.
 LOLV2_REAL_LOW = _first_existing(
+    os.path.join(ROOT, "datasets", "LOLv2", "Real", "Test", "Low"),
     os.path.join(ROOT, "data", "hf", "lol-v2-real", "Test", "Low"),
     os.path.join(ROOT, "data", "lol-v2-real", "Test", "Low"),
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Real_captured\Test\Low",
 )
 LOLV2_REAL_HIGH = _first_existing(
+    os.path.join(ROOT, "datasets", "LOLv2", "Real", "Test", "Normal"),
     os.path.join(ROOT, "data", "hf", "lol-v2-real", "Test", "Normal"),
     os.path.join(ROOT, "data", "lol-v2-real", "Test", "Normal"),
     r"C:\Users\notsnehasis\Downloads\LOL-v2\LOL-v2\Real_captured\Test\Normal",
 )
 
-# LOL-v2 Synthetic, from the Kaggle set ohmahler91/lolv1-and-lolv2.
-# The bundled tree is datasets/LOLv2/Synthetic/{Train,Test}/{Low,Normal}.
-# Scoring uses Test. Low and Normal share filenames (r00816405t.png).
+# LOL-v2 Synthetic test split, from the Kaggle set ohmahler91/lolv1-and-lolv2.
+# The bundled tree is datasets/LOLv2/Synthetic/Test/{Low,Normal}.
+# Low and Normal share filenames (r00816405t.png).
 LOLV2_SYN_LOW = _first_existing(
     os.path.join(ROOT, "datasets", "LOLv2", "Synthetic", "Test", "Low"),
     os.path.join(ROOT, "data", "hf", "lol-v2-synthetic", "Test", "Low"),
@@ -53,8 +57,7 @@ LOLV2_SYN_HIGH = _first_existing(
 )
 
 # UnLOL test split. Low/ is the dark input, High/ is the normal-light reference.
-# Filenames match exactly (0103.jpeg). Captions in ts_caption.txt are scene
-# descriptions and are not read by the enhancer or by PSNR/SSIM.
+# Filenames match exactly (0103.jpeg).
 UNLOL_LOW = _first_existing(
     os.path.join(ROOT, "datasets", "UnLOL", "Test", "Low"),
     os.path.join(ROOT, "data", "UnLOL", "Test", "Low"),
